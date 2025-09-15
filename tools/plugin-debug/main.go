@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"plugin"
+	"strings"
 	"time"
 
 	"github.com/metalmon/yapay-sdk"
@@ -109,6 +110,14 @@ func main() {
 }
 
 func loadConfig(configPath string) (*yapay.Merchant, error) {
+	// Validate config path to prevent path traversal attacks
+	if !filepath.IsAbs(configPath) {
+		configPath = filepath.Clean(configPath)
+		if strings.Contains(configPath, "..") {
+			return nil, fmt.Errorf("invalid config path: path traversal detected")
+		}
+	}
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
