@@ -1,0 +1,25 @@
+name: "Simple Plugin Example"
+enabled: true
+yandex:
+  merchant_id: "example-merchant-id"
+  secret_key: "example-secret-key"
+  sandbox_mode: true
+cors_origins:
+  - "https://example.com"
+  - "https://localhost:3000"
+notifications:
+  telegram:
+    enabled: false
+    bot_token: ""
+    chat_id: ""
+  email:
+    enabled: false
+description: "Simple plugin example for Yapay SDK"
+domain: "example.com"
+metadata:
+  version: "1.0.0"
+  author: "Metalmon"
+  support_email: "dev@frappecrm.ru"
+  website: "https://frappecrm.ru"
+  business_type: "example"
+  currency: "RUB"
