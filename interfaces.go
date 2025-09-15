@@ -72,7 +72,7 @@ type Payment struct {
 	ReturnURL   string                 `json:"return_url"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt   string                 `json:"created_at,omitempty"`
-	UpdatedAt   string `json:"updated_at,omitempty"`
+	UpdatedAt   string                 `json:"updated_at,omitempty"`
 }
 
 // Merchant represents a merchant configuration

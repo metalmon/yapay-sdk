@@ -2,18 +2,15 @@ run:
   timeout: 5m
   issues-exit-code: 1
   tests: true
-  skip-dirs:
-    - vendor
-    - tools
 
 output:
-  format: colored-line-number
+  formats:
+    - format: colored-line-number
   print-issued-line: true
   print-linter-name: true
 
 linters-settings:
   govet:
-    check-shadowing: true
     settings:
       printf:
         funcs:
@@ -22,8 +19,10 @@ linters-settings:
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
 
-  golint:
-    min-confidence: 0
+  revive:
+    rules:
+      - name: exported
+        disabled: false
 
   gocyclo:
     min-complexity: 15
@@ -47,6 +46,10 @@ linters-settings:
   unused:
     check-exported: false
 
+  mnd:
+    settings:
+      checks: argument,case,condition,operation,return,assign
+
   gocritic:
     enabled-tags:
       - diagnostic
@@ -61,16 +64,26 @@ linters-settings:
       - whyNoLint
       - wrapperFunc
 
+  depguard:
+    rules:
+      main:
+        allow:
+          - "github.com/sirupsen/logrus"
+          - "github.com/metalmon/yapay-sdk"
+          - "time"
+          - "fmt"
+          - "context"
+          - "encoding/json"
+          - "errors"
+
 linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
-    - exportloopref
     - exhaustive
     - funlen
     - gochecknoinits
@@ -79,8 +92,6 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
-    - gomnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -88,28 +99,35 @@ linters:
     - ineffassign
     - lll
     - misspell
+    - mnd
     - nakedret
     - noctx
     - nolintlint
+    - revive
     - rowserrcheck
+    - predeclared
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
 
 issues:
+  exclude-dirs:
+    - vendor
+    - tools
   exclude-rules:
     - path: _test\.go
       linters:
-        - gomnd
+        - mnd
         - funlen
         - gocyclo
         - dupl
+    - path: testing/.*\.go
+      linters:
+        - mnd
 
   max-issues-per-linter: 0
   max-same-issues: 0

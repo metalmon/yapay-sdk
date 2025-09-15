@@ -265,5 +265,5 @@ SDK следует семантическому версионированию:
 
 ## Поддержка
 
-- Примеры: https://github.com/metalmon/yapay-examples
+- Примеры: https://github.com/metalmon/yapay-sdk/examples
 - Поддержка: https://t.me/metal_monkey
