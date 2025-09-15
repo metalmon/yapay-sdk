@@ -70,18 +70,18 @@ scp my-plugin.so config.yaml server:/path/to/plugins/my-plugin/
 
 ```
 yapay-sdk/
-├── interfaces.go          # Интерфейсы и модели SDK
-├── testing/              # Моки для тестирования
-├── go.mod                # Зависимости SDK
-├── go.sum                # Checksums зависимостей
-├── examples/             # Примеры плагинов
-│   └── simple-plugin/    # Базовый шаблон плагина
-├── tools/                # Инструменты разработки
-│   └── plugin-debug/     # Инструмент отладки
-├── docs/                 # Документация
-│   ├── PLUGIN_SDK.md     # Руководство по SDK
+├── interfaces.go           # Интерфейсы и модели SDK
+├── testing/                # Моки для тестирования
+├── go.mod                  # Зависимости SDK
+├── go.sum                  # Checksums зависимостей
+├── examples/               # Примеры плагинов
+│   └── simple-plugin/      # Базовый шаблон плагина
+├── tools/                  # Инструменты разработки
+│   └── plugin-debug/       # Инструмент отладки
+├── docs/                   # Документация
+│   ├── PLUGIN_SDK.md       # Руководство по SDK
 │   └── PLUGIN_DEBUGGING.md # Руководство по отладке
-└── README.md             # Этот файл
+└── README.md               # Этот файл
 ```
 
 ## Создание плагина
@@ -265,6 +265,5 @@ SDK следует семантическому версионированию:
 
 ## Поддержка
 
-- Документация: https://docs.metalmon.com/yapay
 - Примеры: https://github.com/metalmon/yapay-examples
 - Поддержка: https://t.me/metal_monkey
