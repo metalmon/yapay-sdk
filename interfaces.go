@@ -139,15 +139,57 @@ type NewHandlerFunc func(*Merchant) ClientHandler
 // This function must be exported from the plugin as "NewPaymentGenerator"
 type NewPaymentGeneratorFunc func(*Merchant, *logrus.Logger) PaymentLinkGenerator
 
-// PaymentWebhook represents a webhook payload from Yandex Pay
+// PaymentWebhook represents a webhook from Yandex Payment API
+// Based on https://pay.yandex.ru/docs/ru/custom/backend/merchant-api/webhook
 type PaymentWebhook struct {
-	Event     string                 `json:"event" yaml:"event"`
-	PaymentID string                 `json:"paymentId" yaml:"payment_id"`
-	OrderID   string                 `json:"orderId" yaml:"order_id"`
-	Status    string                 `json:"status" yaml:"status"`
-	Amount    int                    `json:"amount" yaml:"amount"`
-	Currency  string                 `json:"currency" yaml:"currency"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-	CreatedAt string                 `json:"createdAt,omitempty" yaml:"created_at,omitempty"`
-	UpdatedAt string                 `json:"updatedAt,omitempty" yaml:"updated_at,omitempty"`
+	Event      string                 `json:"event" yaml:"event"`
+	EventTime  string                 `json:"eventTime" yaml:"eventTime"`
+	MerchantID string                 `json:"merchantId" yaml:"merchantId"`
+	Operation  *OperationWebhookData `json:"operation,omitempty" yaml:"operation,omitempty"`
+	Order      *OrderWebhookData      `json:"order,omitempty" yaml:"order,omitempty"`
+	Subscription *SubscriptionWebhookData `json:"subscription,omitempty" yaml:"subscription,omitempty"`
 }
+
+// OperationWebhookData represents operation information in webhook payload
+type OperationWebhookData struct {
+	OperationID         string `json:"operationId" yaml:"operationId"`
+	OperationType       string `json:"operationType" yaml:"operationType"`
+	OrderID             string `json:"orderId" yaml:"orderId"`
+	Status              string `json:"status" yaml:"status"`
+	ExternalOperationID string `json:"externalOperationId,omitempty" yaml:"externalOperationId,omitempty"`
+}
+
+// OrderWebhookData represents order information in webhook payload
+type OrderWebhookData struct {
+	OrderID        string `json:"orderId" yaml:"orderId"`
+	CartUpdated    bool   `json:"cartUpdated" yaml:"cartUpdated"`
+	DeliveryStatus string `json:"deliveryStatus,omitempty" yaml:"deliveryStatus,omitempty"`
+	PaymentStatus  string `json:"paymentStatus" yaml:"paymentStatus"`
+}
+
+// SubscriptionWebhookData represents subscription information in webhook payload
+type SubscriptionWebhookData struct {
+	CustomerSubscriptionID string `json:"customerSubscriptionId" yaml:"customerSubscriptionId"`
+	NextWriteOff           string `json:"nextWriteOff,omitempty" yaml:"nextWriteOff,omitempty"`
+	Status                 string `json:"status" yaml:"status"`
+	SubscriptionPlanID     string `json:"subscriptionPlanId" yaml:"subscriptionPlanId"`
+}
+
+// NotificationRequest represents a request to send a notification
+type NotificationRequest struct {
+	Type      NotificationType       `json:"type" yaml:"type"`
+	ClientID  string                 `json:"client_id" yaml:"client_id"`
+	PaymentID string                 `json:"payment_id,omitempty" yaml:"payment_id,omitempty"`
+	Message   string                 `json:"message" yaml:"message"`
+	Data      map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
+}
+
+// NotificationType represents the type of notification
+type NotificationType string
+
+const (
+	NotificationTypePaymentCreated NotificationType = "payment_created"
+	NotificationTypePaymentSuccess NotificationType = "payment_success"
+	NotificationTypePaymentFailed  NotificationType = "payment_failed"
+	NotificationTypeSystemError    NotificationType = "system_error"
+)
