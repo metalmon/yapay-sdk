@@ -230,6 +230,62 @@ func (h *Handler) HandlePaymentCreated(payment *yapay.Payment) error {
 
 ## Отладка
 
+### Инструмент plugin-debug
+
+SDK включает мощный инструмент для отладки плагинов. Он позволяет тестировать плагины без запуска всего сервера.
+
+#### Установка инструмента
+
+```bash
+cd ../../tools/plugin-debug
+go build -o plugin-debug .
+```
+
+#### Использование
+
+```bash
+# Базовая проверка плагина
+./plugin-debug -plugin simple-plugin -config config.yaml
+
+# Валидация плагина
+./plugin-debug -plugin simple-plugin -config config.yaml -test validate
+
+# Симуляция платежа
+./plugin-debug -plugin simple-plugin -config config.yaml -test simulate -verbose
+
+# Бенчмарк производительности
+./plugin-debug -plugin simple-plugin -config config.yaml -test benchmark
+```
+
+#### Режимы тестирования
+
+1. **validate** - Проверяет корректность реализации интерфейсов
+2. **simulate** - Симулирует полный цикл платежа
+3. **benchmark** - Измеряет производительность
+
+#### Пример вывода
+
+```bash
+$ ./plugin-debug -plugin simple-plugin -test validate -verbose
+
+Loading plugin: simple-plugin
+Loading plugin from: plugins/simple-plugin/simple-plugin.so
+Loading config: config.yaml
+Creating handler...
+Validating handler...
+✅ Handler validation passed
+
+🧪 Running validation tests...
+✅ Valid request passed
+✅ negative amount correctly rejected: amount must be positive, got: -100
+✅ empty description correctly rejected: description is required
+✅ empty return URL correctly rejected: return URL is required
+✅ HandlePaymentCreated passed
+✅ HandlePaymentSuccess passed
+✅ HandlePaymentFailed passed
+✅ HandlePaymentCanceled passed
+```
+
 ### Включение debug логирования
 
 ```go
@@ -249,6 +305,8 @@ func (h *Handler) GetMerchantConfig() *yapay.Merchant {
     return h.merchant
 }
 ```
+
+> **Подробная документация по отладке**: [Отладка плагинов](../../docs/troubleshooting/debugging.md)
 
 ## Поддержка
 

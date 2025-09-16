@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/metalmon/yapay-sdk"
 	"github.com/metalmon/yapay-sdk/testing"
+	"gopkg.in/yaml.v3"
 )
 
 // loadPlugin loads a plugin using the same logic as the main application
@@ -113,19 +113,20 @@ func loadConfig(configPath string) (*yapay.Merchant, error) {
 	// Validate config path to prevent path traversal attacks
 	if !filepath.IsAbs(configPath) {
 		configPath = filepath.Clean(configPath)
-		if strings.Contains(configPath, "..") {
+		// Allow relative paths that don't go up directories
+		if strings.Contains(configPath, "..") && !strings.HasPrefix(configPath, "../") {
 			return nil, fmt.Errorf("invalid config path: path traversal detected")
 		}
 	}
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	var merchant yapay.Merchant
-	if err := json.Unmarshal(data, &merchant); err != nil {
-		return nil, err
+	if err := yaml.Unmarshal(data, &merchant); err != nil {
+		return nil, fmt.Errorf("failed to parse YAML config: %w", err)
 	}
 
 	return &merchant, nil
