@@ -1,0 +1,279 @@
+openapi: 3.0.3
+info:
+  title: Yapay Payment Gateway API
+  description: API для создания платежей через Яндекс.Пей
+  version: 1.0.0
+  contact:
+    name: Yapay Support
+    email: support@yapay.example.com
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+  - url: https://api.yapay.example.com/api/v1
+    description: Production server
+
+paths:
+  /payments/create:
+    post:
+      summary: Create payment
+      description: Создает новый платеж через Яндекс.Пей
+      operationId: createPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+            examples:
+              basic_payment:
+                summary: Базовый платеж
+                value:
+                  merchant_id: "your-merchant-id"
+                  amount: 1000
+                  currency: "RUB"
+                  description: "Оплата курса"
+                  return_url: "https://your-site.com/payment/return"
+              payment_with_metadata:
+                summary: Платеж с метаданными
+                value:
+                  merchant_id: "your-merchant-id"
+                  amount: 2500
+                  currency: "RUB"
+                  description: "Оплата курса 'Основы программирования'"
+                  return_url: "https://your-site.com/payment/return"
+                  metadata:
+                    course_id: "course_123"
+                    user_id: "user_456"
+                    course_name: "Основы программирования"
+      responses:
+        '200':
+          description: Платеж успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePaymentResponse'
+              examples:
+                success:
+                  summary: Успешное создание
+                  value:
+                    success: true
+                    payment_id: "abc123def456"
+                    payment_url: "https://sandbox.pay.ya.ru/l/abc123def456"
+                    order_id: "order_789"
+                    status: "pending"
+                    amount: 1000
+                    currency: "RUB"
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validation_error:
+                  summary: Ошибка валидации
+                  value:
+                    error: "Invalid payment request"
+                    details:
+                      amount: ["Amount must be positive"]
+                      currency: ["Currency is required"]
+        '401':
+          description: Неавторизованный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  summary: Неавторизованный запрос
+                  value:
+                    error: "Unauthorized: merchant_id required and domain must be allowed"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payments/{payment_id}/status:
+    post:
+      summary: Get payment status
+      description: Получает статус платежа
+      operationId: getPaymentStatus
+      parameters:
+        - name: payment_id
+          in: path
+          required: true
+          description: ID платежа
+          schema:
+            type: string
+            example: "abc123def456"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                merchant_id:
+                  type: string
+                  description: ID мерчанта
+                  example: "your-merchant-id"
+              required:
+                - merchant_id
+      responses:
+        '200':
+          description: Статус платежа получен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentStatusResponse'
+        '404':
+          description: Платеж не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CreatePaymentRequest:
+      type: object
+      required:
+        - merchant_id
+        - amount
+        - currency
+        - description
+        - return_url
+      properties:
+        merchant_id:
+          type: string
+          description: Уникальный идентификатор мерчанта
+          example: "your-merchant-id"
+        amount:
+          type: integer
+          description: Сумма платежа в копейках
+          minimum: 1
+          example: 1000
+        currency:
+          type: string
+          description: Валюта платежа
+          enum: ["RUB", "UZS"]
+          example: "RUB"
+        description:
+          type: string
+          description: Описание платежа
+          maxLength: 255
+          example: "Оплата курса программирования"
+        return_url:
+          type: string
+          format: uri
+          description: URL для возврата после оплаты
+          example: "https://your-site.com/payment/return"
+        metadata:
+          type: object
+          description: Дополнительные метаданные платежа
+          additionalProperties: true
+          example:
+            course_id: "course_123"
+            user_id: "user_456"
+
+    CreatePaymentResponse:
+      type: object
+      required:
+        - success
+        - payment_id
+        - payment_url
+        - order_id
+        - status
+        - amount
+        - currency
+      properties:
+        success:
+          type: boolean
+          description: Статус успешности операции
+          example: true
+        payment_id:
+          type: string
+          description: ID платежа в системе Яндекс.Пей
+          example: "abc123def456"
+        payment_url:
+          type: string
+          format: uri
+          description: URL для оплаты
+          example: "https://sandbox.pay.ya.ru/l/abc123def456"
+        order_id:
+          type: string
+          description: ID заказа в системе мерчанта
+          example: "order_789"
+        status:
+          type: string
+          description: Статус платежа
+          enum: ["pending", "succeeded", "canceled", "failed"]
+          example: "pending"
+        amount:
+          type: integer
+          description: Сумма платежа в копейках
+          example: 1000
+        currency:
+          type: string
+          description: Валюта платежа
+          example: "RUB"
+
+    PaymentStatusResponse:
+      type: object
+      required:
+        - payment_id
+        - status
+        - amount
+        - currency
+      properties:
+        payment_id:
+          type: string
+          description: ID платежа
+          example: "abc123def456"
+        status:
+          type: string
+          description: Текущий статус платежа
+          enum: ["pending", "succeeded", "canceled", "failed"]
+          example: "succeeded"
+        amount:
+          type: integer
+          description: Сумма платежа в копейках
+          example: 1000
+        currency:
+          type: string
+          description: Валюта платежа
+          example: "RUB"
+        description:
+          type: string
+          description: Описание платежа
+          example: "Оплата курса программирования"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Описание ошибки
+          example: "Invalid payment request"
+        details:
+          type: object
+          description: Детали ошибки валидации
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            amount: ["Amount must be positive"]
+            currency: ["Currency is required"]
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API ключ для аутентификации

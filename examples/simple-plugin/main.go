@@ -53,7 +53,8 @@ func (h *Handler) HandlePaymentSuccess(payment *yapay.Payment) error {
 		"amount":     payment.Amount,
 	}).Info("Payment successful")
 
-	// Example: Update order status, send confirmation email, etc.
+	// Example: Update order status, activate services, etc.
+	// Notifications are sent automatically by the server based on config.yaml
 
 	return nil
 }
@@ -66,7 +67,8 @@ func (h *Handler) HandlePaymentFailed(payment *yapay.Payment) error {
 		"amount":     payment.Amount,
 	}).Warn("Payment failed")
 
-	// Example: Log failure, send notification to admin, etc.
+	// Example: Log failure, update order status, etc.
+	// Notifications are sent automatically by the server based on config.yaml
 
 	return nil
 }
@@ -159,17 +161,24 @@ func (g *PaymentGenerator) GeneratePaymentData(req *yapay.PaymentRequest) (*yapa
 	}).Info("Generating payment data")
 
 	// Generate unique order ID
-	orderID := fmt.Sprintf("order_%d_%d", time.Now().Unix(), req.Amount)
+	orderID := fmt.Sprintf("simple_%d_%d", time.Now().Unix(), req.Amount)
 
-	// Create payment data
-	result := &yapay.PaymentGenerationResult{
-		PaymentData: map[string]interface{}{
-			"order_id":    orderID,
-			"amount":      req.Amount,
-			"currency":    req.Currency,
-			"description": req.Description,
-			"return_url":  req.ReturnURL,
+	// Prepare payment data for Yandex Pay
+	paymentData := map[string]interface{}{
+		"amount": map[string]interface{}{
+			"value":    fmt.Sprintf("%.2f", float64(req.Amount)/100),
+			"currency": req.Currency,
 		},
+		"confirmation": map[string]interface{}{
+			"type":       "redirect",
+			"return_url": req.ReturnURL,
+		},
+		"description": req.Description,
+		"metadata":    req.Metadata,
+	}
+
+	result := &yapay.PaymentGenerationResult{
+		PaymentData: paymentData,
 		OrderID:     orderID,
 		Amount:      req.Amount,
 		Currency:    req.Currency,
@@ -181,6 +190,7 @@ func (g *PaymentGenerator) GeneratePaymentData(req *yapay.PaymentRequest) (*yapa
 	g.logger.WithFields(logrus.Fields{
 		"order_id": orderID,
 		"amount":   req.Amount,
+		"currency": req.Currency,
 	}).Info("Payment data generated")
 
 	return result, nil
@@ -188,11 +198,27 @@ func (g *PaymentGenerator) GeneratePaymentData(req *yapay.PaymentRequest) (*yapa
 
 // ValidatePriceFromBackend validates price from backend
 func (g *PaymentGenerator) ValidatePriceFromBackend(req *yapay.PaymentRequest) error {
-	g.logger.WithField("amount", req.Amount).Debug("Validating price from backend")
+	g.logger.WithField("amount", req.Amount).Debug("Price validation skipped - using frontend data as-is")
 
 	// Example: Check price against your backend
 	// This is where you would make API calls to your backend
 	// to validate the price, check inventory, etc.
+	//
+	// Uncomment and implement if you need backend validation:
+	//
+	// productID, exists := req.Metadata["product_id"]
+	// if !exists {
+	//     return nil // Skip validation if no product_id
+	// }
+	//
+	// expectedPrice, err := g.getProductPrice(productID.(string))
+	// if err != nil {
+	//     return fmt.Errorf("failed to get product price: %w", err)
+	// }
+	//
+	// if req.Amount != expectedPrice {
+	//     return fmt.Errorf("price mismatch: expected %d, got %d", expectedPrice, req.Amount)
+	// }
 
 	return nil
 }
@@ -200,9 +226,9 @@ func (g *PaymentGenerator) ValidatePriceFromBackend(req *yapay.PaymentRequest) e
 // GetPaymentSettings returns payment settings
 func (g *PaymentGenerator) GetPaymentSettings() *yapay.PaymentSettings {
 	return &yapay.PaymentSettings{
-		Currency:           "RUB",
+		Currency:           g.merchant.Yandex.Currency,
 		SandboxMode:        g.merchant.Yandex.SandboxMode,
-		AutoConfirmTimeout: 30,
+		AutoConfirmTimeout: 1800, // 30 minutes
 		CustomFields: map[string]interface{}{
 			"merchant_name": g.merchant.Name,
 			"domain":        g.merchant.Domain,
@@ -214,9 +240,30 @@ func (g *PaymentGenerator) GetPaymentSettings() *yapay.PaymentSettings {
 func (g *PaymentGenerator) CustomizeYandexPayload(payload map[string]interface{}) error {
 	g.logger.Debug("Customizing Yandex Pay payload")
 
-	// Example: Add custom fields to Yandex Pay request
+	// Add merchant information to payload
 	payload["merchant_name"] = g.merchant.Name
 	payload["domain"] = g.merchant.Domain
+
+	// Example: Add receipt information if needed
+	// Uncomment and customize if you need receipt:
+	//
+	// if metadata, exists := payload["metadata"].(map[string]interface{}); exists {
+	//     if userEmail, exists := metadata["user_email"]; exists {
+	//         payload["receipt"] = map[string]interface{}{
+	//             "customer": map[string]interface{}{
+	//                 "email": userEmail,
+	//             },
+	//             "items": []map[string]interface{}{
+	//                 {
+	//                     "description": payload["description"],
+	//                     "amount":       payload["amount"],
+	//                     "quantity":    "1",
+	//                     "vat_code":    "1", // НДС 20%
+	//                 },
+	//             },
+	//         }
+	//     }
+	// }
 
 	return nil
 }

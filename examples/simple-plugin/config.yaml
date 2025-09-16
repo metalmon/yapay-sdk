@@ -1,25 +1,40 @@
+id: "simple-plugin-client"
 name: "Simple Plugin Example"
+description: "Простой пример плагина для Yapay SDK"
+domain: "example.com"
 enabled: true
-yandex:
-  merchant_id: "example-merchant-id"
-  secret_key: "example-secret-key"
-  sandbox_mode: true
 cors_origins:
   - "https://example.com"
-  - "https://localhost:3000"
-notifications:
-  telegram:
-    enabled: false
-    bot_token: ""
-    chat_id: ""
-  email:
-    enabled: false
-description: "Simple plugin example for Yapay SDK"
-domain: "example.com"
+  - "https://www.example.com"
+  - "http://localhost:3000"
+rate_limit: 100
 metadata:
   version: "1.0.0"
   author: "Metalmon"
   support_email: "dev@frappecrm.ru"
   website: "https://frappecrm.ru"
   business_type: "example"
+
+yandex:
+  merchant_id: "your-yandex-merchant-id"
+  secret_key: "your-yandex-secret-key"
+  sandbox_mode: true
   currency: "RUB"
+
+notifications:
+  telegram:
+    enabled: false
+    chat_id: "your-telegram-chat-id"
+    bot_token: "your-telegram-bot-token"
+  email:
+    enabled: false
+    smtp_host: ""
+    smtp_port: 587
+    username: ""
+    password: ""
+    from: ""
+
+field_labels:
+  product_id: "ID товара"
+  user_id: "ID пользователя"
+  product_name: "Название товара"
