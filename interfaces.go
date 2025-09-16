@@ -138,3 +138,16 @@ type NewHandlerFunc func(*Merchant) ClientHandler
 // NewPaymentGeneratorFunc is the function signature for creating a payment generator
 // This function must be exported from the plugin as "NewPaymentGenerator"
 type NewPaymentGeneratorFunc func(*Merchant, *logrus.Logger) PaymentLinkGenerator
+
+// PaymentWebhook represents a webhook payload from Yandex Pay
+type PaymentWebhook struct {
+	Event     string                 `json:"event" yaml:"event"`
+	PaymentID string                 `json:"paymentId" yaml:"payment_id"`
+	OrderID   string                 `json:"orderId" yaml:"order_id"`
+	Status    string                 `json:"status" yaml:"status"`
+	Amount    int                    `json:"amount" yaml:"amount"`
+	Currency  string                 `json:"currency" yaml:"currency"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	CreatedAt string                 `json:"createdAt,omitempty" yaml:"created_at,omitempty"`
+	UpdatedAt string                 `json:"updatedAt,omitempty" yaml:"updated_at,omitempty"`
+}
