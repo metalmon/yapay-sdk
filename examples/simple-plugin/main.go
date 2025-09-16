@@ -161,7 +161,7 @@ func (g *PaymentGenerator) GeneratePaymentData(req *yapay.PaymentRequest) (*yapa
 	}).Info("Generating payment data")
 
 	// Generate unique order ID
-	orderID := fmt.Sprintf("simple_%d_%d", time.Now().Unix(), req.Amount)
+	orderID := fmt.Sprintf("order_%d_%d", time.Now().Unix(), req.Amount)
 
 	// Prepare payment data for Yandex Pay
 	paymentData := map[string]interface{}{
@@ -228,7 +228,7 @@ func (g *PaymentGenerator) GetPaymentSettings() *yapay.PaymentSettings {
 	return &yapay.PaymentSettings{
 		Currency:           g.merchant.Yandex.Currency,
 		SandboxMode:        g.merchant.Yandex.SandboxMode,
-		AutoConfirmTimeout: 1800, // 30 minutes
+		AutoConfirmTimeout: 30, // 30 seconds for testing
 		CustomFields: map[string]interface{}{
 			"merchant_name": g.merchant.Name,
 			"domain":        g.merchant.Domain,
