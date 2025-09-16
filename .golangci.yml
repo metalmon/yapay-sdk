@@ -70,11 +70,14 @@ linters-settings:
         allow:
           - "github.com/sirupsen/logrus"
           - "github.com/metalmon/yapay-sdk"
+          - "github.com/stretchr/testify/assert"
+          - "github.com/stretchr/testify/require"
           - "time"
           - "fmt"
           - "context"
           - "encoding/json"
           - "errors"
+          - "testing"
 
 linters:
   disable-all: true
