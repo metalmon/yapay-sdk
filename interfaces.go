@@ -4,54 +4,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// ClientHandler defines the interface that all client handlers must implement
-type ClientHandler interface {
-	// Payment lifecycle methods
-	HandlePaymentCreated(payment *Payment) error
-	HandlePaymentSuccess(payment *Payment) error
-	HandlePaymentFailed(payment *Payment) error
-	HandlePaymentCanceled(payment *Payment) error
-
-	// Request validation
-	ValidateRequest(req *PaymentRequest) error
-
-	// Configuration and metadata
-	GetMerchantConfig() *Merchant
-	GetMerchantID() string
-	GetMerchantName() string
-
-	// Payment link generator
-	GetPaymentLinkGenerator() interface{}
-	SetPaymentLinkGenerator(generator interface{})
-}
-
-// PaymentLinkGenerator defines the interface for payment link generation
-type PaymentLinkGenerator interface {
-	GeneratePaymentData(req *PaymentRequest) (*PaymentGenerationResult, error)
-	ValidatePriceFromBackend(req *PaymentRequest) error
-	GetPaymentSettings() *PaymentSettings
-	CustomizeYandexPayload(payload map[string]interface{}) error
-}
-
-// PaymentGenerationResult represents the result of payment data generation
-type PaymentGenerationResult struct {
-	PaymentData map[string]interface{} `json:"payment_data"`
-	OrderID     string                 `json:"order_id"`
-	Amount      int                    `json:"amount"`
-	Currency    string                 `json:"currency"`
-	Description string                 `json:"description"`
-	ReturnURL   string                 `json:"return_url"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-}
-
-// PaymentSettings represents payment settings for Yandex Pay
-type PaymentSettings struct {
-	Currency           string                 `json:"currency"`
-	SandboxMode        bool                   `json:"sandbox_mode"`
-	AutoConfirmTimeout int                    `json:"auto_confirm_timeout"`
-	CustomFields       map[string]interface{} `json:"custom_fields,omitempty"`
-}
-
 // PaymentRequest represents a payment request
 type PaymentRequest struct {
 	Amount      int                    `json:"amount"`
@@ -65,11 +17,13 @@ type PaymentRequest struct {
 type Payment struct {
 	ID          string                 `json:"id"`
 	OrderID     string                 `json:"order_id"`
+	MerchantID  string                 `json:"merchant_id"` // Merchant ID from Yandex Pay (also serves as client ID)
 	Amount      int                    `json:"amount"`
 	Currency    string                 `json:"currency"`
 	Description string                 `json:"description"`
 	Status      string                 `json:"status"`
 	ReturnURL   string                 `json:"return_url"`
+	PaymentURL  string                 `json:"payment_url,omitempty"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt   string                 `json:"created_at,omitempty"`
 	UpdatedAt   string                 `json:"updated_at,omitempty"`
@@ -127,6 +81,54 @@ type EmailConfig struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	From     string `json:"from"`
+}
+
+// ClientHandler defines the interface that all client handlers must implement
+type ClientHandler interface {
+	// Payment lifecycle methods
+	HandlePaymentCreated(payment *Payment) error
+	HandlePaymentSuccess(payment *Payment) error
+	HandlePaymentFailed(payment *Payment) error
+	HandlePaymentCanceled(payment *Payment) error
+
+	// Request validation
+	ValidateRequest(req *PaymentRequest) error
+
+	// Configuration and metadata
+	GetMerchantConfig() *Merchant
+	GetMerchantID() string
+	GetMerchantName() string
+
+	// Payment link generator
+	GetPaymentLinkGenerator() interface{}
+	SetPaymentLinkGenerator(generator interface{})
+}
+
+// PaymentLinkGenerator defines the interface for payment link generation
+type PaymentLinkGenerator interface {
+	GeneratePaymentData(req *PaymentRequest) (*PaymentGenerationResult, error)
+	ValidatePriceFromBackend(req *PaymentRequest) error
+	GetPaymentSettings() *PaymentSettings
+	CustomizeYandexPayload(payload map[string]interface{}) error
+}
+
+// PaymentGenerationResult represents the result of payment data generation
+type PaymentGenerationResult struct {
+	PaymentData map[string]interface{} `json:"payment_data"`
+	OrderID     string                 `json:"order_id"`
+	Amount      int                    `json:"amount"`
+	Currency    string                 `json:"currency"`
+	Description string                 `json:"description"`
+	ReturnURL   string                 `json:"return_url"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// PaymentSettings represents payment settings for Yandex Pay
+type PaymentSettings struct {
+	Currency           string                 `json:"currency"`
+	SandboxMode        bool                   `json:"sandbox_mode"`
+	AutoConfirmTimeout int                    `json:"auto_confirm_timeout"`
+	CustomFields       map[string]interface{} `json:"custom_fields,omitempty"`
 }
 
 // NewHandlerFunc is the function signature for creating a new handler
