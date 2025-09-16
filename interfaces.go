@@ -142,11 +142,11 @@ type NewPaymentGeneratorFunc func(*Merchant, *logrus.Logger) PaymentLinkGenerato
 // PaymentWebhook represents a webhook from Yandex Payment API
 // Based on https://pay.yandex.ru/docs/ru/custom/backend/merchant-api/webhook
 type PaymentWebhook struct {
-	Event      string                 `json:"event" yaml:"event"`
-	EventTime  string                 `json:"eventTime" yaml:"eventTime"`
-	MerchantID string                 `json:"merchantId" yaml:"merchantId"`
-	Operation  *OperationWebhookData `json:"operation,omitempty" yaml:"operation,omitempty"`
-	Order      *OrderWebhookData      `json:"order,omitempty" yaml:"order,omitempty"`
+	Event        string                   `json:"event" yaml:"event"`
+	EventTime    string                   `json:"eventTime" yaml:"eventTime"`
+	MerchantID   string                   `json:"merchantId" yaml:"merchantId"`
+	Operation    *OperationWebhookData    `json:"operation,omitempty" yaml:"operation,omitempty"`
+	Order        *OrderWebhookData        `json:"order,omitempty" yaml:"order,omitempty"`
 	Subscription *SubscriptionWebhookData `json:"subscription,omitempty" yaml:"subscription,omitempty"`
 }
 
