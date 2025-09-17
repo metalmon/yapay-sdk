@@ -3,7 +3,7 @@ module simple-plugin
 go 1.21
 
 require (
-	github.com/metalmon/yapay-sdk v1.0.4
+	github.com/metalmon/yapay-sdk v1.0.5
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
 )
