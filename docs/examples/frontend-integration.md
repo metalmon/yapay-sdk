@@ -4,12 +4,181 @@
 
 ## Содержание
 
+- [Загрузка Яндекс.Пей SDK](#загрузка-яндекспей-sdk)
 - [Кнопки оплаты](#кнопки-оплаты)
 - [Виджеты](#виджеты)
 - [Бейджи](#бейджи)
 - [Полный пример интеграции](#полный-пример-интеграции)
 - [Обработка ошибок](#обработка-ошибок)
 - [Безопасность](#безопасность)
+
+## Загрузка Яндекс.Пей SDK
+
+Перед использованием компонентов Яндекс.Пей необходимо загрузить SDK. Есть несколько способов:
+
+### Способ 1: Прямая загрузка в HTML
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Оплата товара</title>
+    <!-- Загрузка Яндекс.Пей SDK -->
+    <script src="https://pay.yandex.ru/sdk/v1/pay.js"></script>
+</head>
+<body>
+    <!-- Ваш контент -->
+</body>
+</html>
+```
+
+### Способ 2: Динамическая загрузка через JavaScript
+
+```javascript
+// Проверяем, загружен ли уже SDK
+if (typeof window.YaPay !== 'undefined') {
+    console.log('Yandex Pay SDK already loaded');
+    initializeYandexPay();
+} else {
+    console.log('Loading Yandex Pay SDK...');
+    
+    // Создаем элемент script
+    const script = document.createElement('script');
+    script.src = 'https://pay.yandex.ru/sdk/v1/pay.js';
+    script.async = true;
+    
+    // Обработчики загрузки
+    script.onload = function() {
+        console.log('Yandex Pay SDK loaded successfully');
+        console.log('YaPay object available:', typeof window.YaPay);
+        initializeYandexPay();
+    };
+    
+    script.onerror = function(error) {
+        console.error('Failed to load Yandex Pay SDK:', error);
+        alert('Ошибка загрузки платежной системы. Попробуйте обновить страницу.');
+    };
+    
+    // Добавляем скрипт в документ
+    document.head.appendChild(script);
+}
+```
+
+### Способ 3: Загрузка с ожиданием готовности DOM
+
+```javascript
+// Загрузка SDK с ожиданием готовности DOM
+function loadYandexPaySDK() {
+    if (typeof window.YaPay !== 'undefined') {
+        console.log('Yandex Pay SDK already loaded');
+        initializeYandexPay();
+        return;
+    }
+
+    console.log('Loading Yandex Pay SDK...');
+    
+    const script = document.createElement('script');
+    script.src = 'https://pay.yandex.ru/sdk/v1/pay.js';
+    script.async = true;
+    
+    script.onload = function() {
+        console.log('Yandex Pay SDK loaded successfully');
+        initializeYandexPay();
+    };
+    
+    script.onerror = function(error) {
+        console.error('Failed to load Yandex Pay SDK:', error);
+        alert('Ошибка загрузки платежной системы. Попробуйте обновить страницу.');
+    };
+    
+    document.head.appendChild(script);
+}
+
+// Инициализация при загрузке страницы
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadYandexPaySDK);
+} else {
+    loadYandexPaySDK();
+}
+```
+
+### Проверка загрузки SDK
+
+```javascript
+// Проверка доступности SDK
+function checkSDKAvailability() {
+    if (typeof window.YaPay === 'undefined') {
+        console.error('YaPay SDK not loaded');
+        return false;
+    }
+    
+    // Проверяем необходимые методы
+    const requiredMethods = ['createSession'];
+    for (const method of requiredMethods) {
+        if (typeof window.YaPay[method] !== 'function') {
+            console.error(`YaPay.${method} is not available`);
+            return false;
+        }
+    }
+    
+    console.log('YaPay SDK is ready');
+    return true;
+}
+
+// Использование
+if (checkSDKAvailability()) {
+    initializeYandexPay();
+} else {
+    console.error('SDK is not ready, retrying...');
+    setTimeout(checkSDKAvailability, 1000);
+}
+```
+
+### Обработка ошибок загрузки
+
+```javascript
+// Расширенная обработка ошибок загрузки
+function loadYandexPaySDKWithRetry(maxRetries = 3) {
+    let attempts = 0;
+    
+    function attemptLoad() {
+        attempts++;
+        
+        if (typeof window.YaPay !== 'undefined') {
+            console.log('Yandex Pay SDK already loaded');
+            initializeYandexPay();
+            return;
+        }
+        
+        console.log(`Loading Yandex Pay SDK... (attempt ${attempts}/${maxRetries})`);
+        
+        const script = document.createElement('script');
+        script.src = 'https://pay.yandex.ru/sdk/v1/pay.js';
+        script.async = true;
+        
+        script.onload = function() {
+            console.log('Yandex Pay SDK loaded successfully');
+            initializeYandexPay();
+        };
+        
+        script.onerror = function(error) {
+            console.error(`Failed to load Yandex Pay SDK (attempt ${attempts}):`, error);
+            
+            if (attempts < maxRetries) {
+                console.log(`Retrying in ${attempts * 1000}ms...`);
+                setTimeout(attemptLoad, attempts * 1000);
+            } else {
+                console.error('Max retries reached, giving up');
+                alert('Не удалось загрузить платежную систему. Проверьте подключение к интернету.');
+            }
+        };
+        
+        document.head.appendChild(script);
+    }
+    
+    attemptLoad();
+}
+```
 
 ## Кнопки оплаты
 
@@ -22,6 +191,7 @@
 <html>
 <head>
     <title>Оплата товара</title>
+    <!-- Загрузка Яндекс.Пей SDK -->
     <script src="https://pay.yandex.ru/sdk/v1/pay.js"></script>
 </head>
 <body>
@@ -746,6 +916,12 @@ const badgeConfigs = {
                 Utils.showError('Ошибка инициализации платежной системы. Попробуйте обновить страницу.');
                 return;
             }
+            
+            // Проверяем доступность необходимых методов
+            if (typeof YaPay.createSession !== 'function') {
+                Utils.showError('YaPay.createSession не доступен. Проверьте версию SDK.');
+                return;
+            }
 
             const orderData = getOrderData();
             
@@ -811,7 +987,7 @@ const badgeConfigs = {
             });
         }
 
-        // Загрузка SDK
+        // Загрузка Яндекс.Пей SDK
         function loadYandexPaySDK() {
             if (typeof window.YaPay !== 'undefined') {
                 console.log('Yandex Pay SDK already loaded');
@@ -821,20 +997,25 @@ const badgeConfigs = {
 
             console.log('Loading Yandex Pay SDK...');
             
+            // Создаем элемент script
             const script = document.createElement('script');
             script.src = 'https://pay.yandex.ru/sdk/v1/pay.js';
             script.async = true;
             
+            // Обработчики загрузки
             script.onload = function() {
                 console.log('Yandex Pay SDK loaded successfully');
+                console.log('YaPay object available:', typeof window.YaPay);
                 initializeYandexPay();
             };
             
             script.onerror = function(error) {
                 console.error('Failed to load Yandex Pay SDK:', error);
+                console.error('Script src:', script.src);
                 Utils.showError('Ошибка загрузки платежной системы. Попробуйте обновить страницу.');
             };
             
+            // Добавляем скрипт в документ
             document.head.appendChild(script);
         }
 
