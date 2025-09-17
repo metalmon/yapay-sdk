@@ -1,8 +1,9 @@
 {
   "name": "Yapay SDK - Development",
-  "dockerComposeFile": "../docker-compose.dev.yml",
-  "service": "yapay-sdk-dev",
-  "workspaceFolder": "/workspace/sdk",
+  "build": {
+    "dockerfile": "Dockerfile.dev",
+    "context": ".."
+  },
 
   // Configure tool-specific properties
   "customizations": {

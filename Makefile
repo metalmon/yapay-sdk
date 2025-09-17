@@ -6,7 +6,9 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  help         - Show this help message"
-	@echo "  build        - Build all plugins from src/"
+	@echo "  plugins      - Build all plugins (smart environment detection)"
+	@echo "  plugin-NAME  - Build specific plugin (smart environment detection)"
+	@echo "  build        - Build all plugins from src/ (legacy)"
 	@echo "  examples     - Build all examples"
 	@echo "  all          - Build everything"
 	@echo "  test         - Run tests for all plugins and examples"
@@ -18,43 +20,127 @@ help:
 	@echo "  tools-build  - Build development tools"
 	@echo ""
 	@echo "Development Container Commands:"
-	@echo "  dev-build    - Build development container"
-	@echo "  dev-run      - Run development container"
-	@echo "  dev-stop     - Stop development container"
-	@echo "  dev-shell    - Open shell in development container"
-	@echo "  dev-logs     - Show development container logs"
-	@echo "  dev-status   - Show development container status"
-	@echo "  dev-clean    - Clean development container and volumes"
-	@echo "  dev-setup    - Setup development environment"
-	@echo "  dev-test     - Run tests in development container"
-	@echo "  dev-debug    - Start debug session in container"
-	@echo "  dev-plugins  - Build and test plugins in container"
-	@echo "  dev-server   - Start Yapay server for integration testing"
-	@echo "  dev-tunnel   - Start CloudPub tunnel for webhook testing"
+	@echo "  dev-build       - Build development container"
+	@echo "  docker-build-dev - Build devcontainer image for plugin compilation"
+	@echo "  dev-run         - Run development container"
+	@echo "  dev-stop        - Stop development container"
+	@echo "  dev-shell       - Open shell in development container"
+	@echo "  dev-logs        - Show development container logs"
+	@echo "  dev-status      - Show development container status"
+	@echo "  dev-clean       - Clean development container and volumes"
+	@echo "  dev-setup       - Setup development environment"
+	@echo "  dev-test        - Run tests in development container"
+	@echo "  dev-debug       - Start debug session in container"
+	@echo "  dev-plugins     - Build and test plugins in container"
+	@echo "  dev-server      - Start Yapay server for integration testing"
+	@echo "  dev-tunnel      - Start CloudPub tunnel for webhook testing"
 	@echo "  dev-tunnel-start  - Start CloudPub tunnel"
 	@echo "  dev-tunnel-stop   - Stop CloudPub tunnel"
 	@echo "  dev-tunnel-status - Show tunnel status"
 	@echo "  dev-tunnel-url    - Get tunnel URL"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make build                    # Build all plugins from src/"
+	@echo "  make plugins                  # Build all plugins (smart detection)"
+	@echo "  make plugin-my-plugin         # Build specific plugin (smart detection)"
 	@echo "  make examples                 # Build all examples"
 	@echo "  make all                      # Build everything"
 	@echo "  make test                     # Test all plugins and examples"
-	@echo "  make -C src/my-plugin build   # Build specific plugin"
+	@echo "  make -C src/my-plugin build   # Build specific plugin (legacy)"
 	@echo "  make -C examples/simple-plugin build  # Build example plugin"
 	@echo "  make dev-run                  # Start development container"
 	@echo "  make dev-shell                # Open shell in container"
 
-# Build all plugins from src/
-build:
-	@echo "Building all plugins from src/..."
+# Smart plugin build - detects environment and uses devcontainer if needed
+plugins:
+	@echo "Building plugins (smart environment detection)..."
+	@if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then \
+		echo "Running in Alpine devcontainer - building plugins directly"; \
+		$(MAKE) build-plugins-alpine; \
+	elif [ -f /.dockerenv ]; then \
+		echo "Running in Docker container but not Alpine - using devcontainer"; \
+		$(MAKE) build-plugins-via-devcontainer; \
+	else \
+		echo "Running on host - using devcontainer for Alpine compatibility"; \
+		$(MAKE) build-plugins-via-devcontainer; \
+	fi
+
+# Build plugins directly in Alpine environment (when already in devcontainer)
+build-plugins-alpine:
+	@echo "Building plugins in Alpine environment..."
 	@for plugin in src/*/; do \
 		if [ -f "$$plugin/Makefile" ]; then \
-			echo "Building $$plugin..."; \
-			$(MAKE) -C "$$plugin" build; \
+			plugin_name=$$(basename "$$plugin"); \
+			echo "Building plugin: $$plugin_name"; \
+			(cd "$$plugin" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
 		fi; \
 	done
+	@echo "All plugins built successfully in Alpine environment!"
+
+# Build plugins via devcontainer (when not in Alpine environment)
+build-plugins-via-devcontainer:
+	@echo "Building plugins via devcontainer for Alpine compatibility..."
+	@if ! docker ps -q --filter name=yapay-sdk-devcontainer | grep -q .; then \
+		echo "Devcontainer not running - starting it..."; \
+		docker run --rm -d --name yapay-sdk-devcontainer \
+			-v $(PWD):/workspace \
+			-w /workspace \
+			yapay-sdk:dev \
+			tail -f /dev/null; \
+		sleep 2; \
+	fi
+	@echo "Building plugins in devcontainer..."
+	@docker exec yapay-sdk-devcontainer make build-plugins-alpine
+	@echo "Plugins built via devcontainer successfully!"
+
+# Build individual plugin (smart environment detection)
+plugin-%:
+	@plugin_name=$*; \
+	echo "Building plugin: $$plugin_name (smart environment detection)..."; \
+	if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then \
+		echo "Running in Alpine devcontainer - building plugin directly"; \
+		$(MAKE) build-plugin-alpine-$$plugin_name; \
+	elif [ -f /.dockerenv ]; then \
+		echo "Running in Docker container but not Alpine - using devcontainer"; \
+		$(MAKE) build-plugin-via-devcontainer-$$plugin_name; \
+	else \
+		echo "Running on host - using devcontainer for Alpine compatibility"; \
+		$(MAKE) build-plugin-via-devcontainer-$$plugin_name; \
+	fi
+
+# Build individual plugin directly in Alpine environment
+build-plugin-alpine-%:
+	@plugin_name=$*; \
+	echo "Building plugin: $$plugin_name in Alpine environment..."; \
+	if [ -f "src/$$plugin_name/Makefile" ]; then \
+		(cd "src/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+		echo "Plugin $$plugin_name built successfully in Alpine environment!"; \
+	elif [ -f "examples/$$plugin_name/Makefile" ]; then \
+		(cd "examples/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+		echo "Plugin $$plugin_name built successfully in Alpine environment!"; \
+	else \
+		echo "Error: Plugin $$plugin_name not found in src/ or examples/"; \
+		exit 1; \
+	fi
+
+# Build individual plugin via devcontainer
+build-plugin-via-devcontainer-%:
+	@plugin_name=$*; \
+	echo "Building plugin: $$plugin_name via devcontainer..."; \
+	if ! docker ps -q --filter name=yapay-sdk-devcontainer | grep -q .; then \
+		echo "Devcontainer not running - starting it..."; \
+		docker run --rm -d --name yapay-sdk-devcontainer \
+			-v $(PWD):/workspace \
+			-w /workspace \
+			yapay-sdk:dev \
+			tail -f /dev/null; \
+		sleep 2; \
+	fi; \
+	echo "Building plugin $$plugin_name in devcontainer..."; \
+	docker exec yapay-sdk-devcontainer make build-plugin-alpine-$$plugin_name; \
+	echo "Plugin $$plugin_name built via devcontainer successfully!"
+
+# Legacy command for backward compatibility
+build: plugins
 
 # Build all examples
 examples:
@@ -69,7 +155,7 @@ examples:
 # Build everything (plugins + examples)
 all:
 	@echo "Building everything..."
-	@$(MAKE) build
+	@$(MAKE) plugins
 	@$(MAKE) examples
 
 # Test all plugins and examples
@@ -158,6 +244,12 @@ dev-build:
 	docker compose -f docker-compose.dev.yml build
 	@echo "Development container built successfully!"
 
+# Build devcontainer image for plugin compilation
+docker-build-dev:
+	@echo "Building devcontainer image..."
+	docker build -f .devcontainer/Dockerfile.dev -t yapay-sdk:dev .
+	@echo "Devcontainer image built successfully!"
+
 # Run development container
 dev-run: dev-build
 	@echo "Starting development container..."
@@ -216,7 +308,7 @@ dev-debug:
 # Build and test plugins in container
 dev-plugins:
 	@echo "Building and testing plugins in development container..."
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make build && make test"
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make plugins && make test"
 
 # Start Yapay server for integration testing
 dev-server:
