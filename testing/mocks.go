@@ -236,8 +236,13 @@ func (t *TestData) CreateTestMerchant() *yapay.Merchant {
 		Domain:      "test.example.com",
 		Enabled:     true,
 		SandboxMode: true,
-		CORSOrigins: []string{"https://test.example.com"},
-		RateLimit:   100,
+		Security: yapay.SecurityConfig{
+			RequestEnforcement: "monitor",
+			RateLimit:          100,
+			CORS: yapay.CORSConfig{
+				Origins: []string{"https://test.example.com"},
+			},
+		},
 		Metadata: map[string]interface{}{
 			"version": "1.0.0",
 			"author":  "Test",

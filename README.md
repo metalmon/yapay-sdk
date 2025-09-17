@@ -82,8 +82,12 @@ id: "my-plugin"
 yandex:
   merchant_id: "your-merchant-id"
   secret_key: "your-secret-key"
-cors_origins:
-  - "https://yourdomain.com"
+security:
+  request_enforcement: strict  # strict | origin | monitor
+  rate_limit: 1000
+  cors:
+    origins:
+      - "https://yourdomain.com"
 ```
 
 ## 🚀 Создание плагина
@@ -109,5 +113,5 @@ make test
 
 ---
 
-**Версия**: 1.0.3  
+**Версия**: 1.0.4  
 **Статус**: ✅ Готов к использованию

@@ -3,11 +3,14 @@ name: "Simple Plugin Example"
 description: "Простой пример плагина для Yapay SDK"
 domain: "example.com"
 enabled: true
-cors_origins:
-  - "https://example.com"
-  - "https://www.example.com"
-  - "http://localhost:3000"
-rate_limit: 100
+security:
+  request_enforcement: monitor  # strict | origin | monitor
+  rate_limit: 100
+  cors:
+    origins:
+      - "https://example.com"
+      - "https://www.example.com"
+      - "http://localhost:3000"
 metadata:
   version: "1.0.0"
   author: "Metalmon"

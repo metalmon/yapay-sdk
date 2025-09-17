@@ -60,11 +60,14 @@ name: "Simple Plugin Example"
 description: "Простой пример плагина для Yapay SDK"
 domain: "your-domain.com"
 enabled: true
-cors_origins:
-  - "https://your-domain.com"
-  - "https://www.your-domain.com"
-  - "http://localhost:3000"
-rate_limit: 100
+security:
+  request_enforcement: monitor  # strict | origin | monitor
+  rate_limit: 100
+  cors:
+    origins:
+      - "https://your-domain.com"
+      - "https://www.your-domain.com"
+      - "http://localhost:3000"
 
 yandex:
   merchant_id: "your-yandex-merchant-id" # Замените на ваш ID

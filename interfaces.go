@@ -38,7 +38,6 @@ type Merchant struct {
 	Enabled       bool                   `json:"enabled" yaml:"enabled"`
 	SandboxMode   bool                   `json:"sandbox_mode" yaml:"sandbox_mode"`
 	Security      SecurityConfig         `json:"security" yaml:"security"`
-	RateLimit     int                    `json:"rate_limit" yaml:"rate_limit"`
 	Metadata      map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Yandex        YandexConfig           `json:"yandex" yaml:"yandex"`
 	Notifications NotificationConfig     `json:"notifications" yaml:"notifications"`
@@ -49,6 +48,7 @@ type Merchant struct {
 type SecurityConfig struct {
 	// RequestEnforcement controls request validation policy: strict | origin | monitor
 	RequestEnforcement string     `json:"request_enforcement" yaml:"request_enforcement"`
+	RateLimit          int        `json:"rate_limit" yaml:"rate_limit"`
 	CORS               CORSConfig `json:"cors" yaml:"cors"`
 }
 

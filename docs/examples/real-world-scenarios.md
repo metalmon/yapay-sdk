@@ -15,10 +15,13 @@ description: "Онлайн-школа программирования"
 domain: "programming-school.com"
 enabled: true
 sandbox_mode: true
-cors_origins:
-  - "https://programming-school.com"
-  - "https://www.programming-school.com"
-rate_limit: 1000
+security:
+  request_enforcement: strict  # strict | origin | monitor
+  rate_limit: 1000
+  cors:
+    origins:
+      - "https://programming-school.com"
+      - "https://www.programming-school.com"
 
 yandex:
   merchant_id: "your-yandex-merchant-id"
