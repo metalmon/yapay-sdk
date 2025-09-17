@@ -37,12 +37,24 @@ type Merchant struct {
 	Domain        string                 `json:"domain" yaml:"domain"`
 	Enabled       bool                   `json:"enabled" yaml:"enabled"`
 	SandboxMode   bool                   `json:"sandbox_mode" yaml:"sandbox_mode"`
-	CORSOrigins   []string               `json:"cors_origins" yaml:"cors_origins"`
+	Security      SecurityConfig         `json:"security" yaml:"security"`
 	RateLimit     int                    `json:"rate_limit" yaml:"rate_limit"`
 	Metadata      map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 	Yandex        YandexConfig           `json:"yandex" yaml:"yandex"`
 	Notifications NotificationConfig     `json:"notifications" yaml:"notifications"`
 	FieldLabels   FieldLabels            `json:"field_labels,omitempty" yaml:"field_labels,omitempty"`
+}
+
+// SecurityConfig represents per-merchant security configuration
+type SecurityConfig struct {
+	// RequestEnforcement controls request validation policy: strict | origin | monitor
+	RequestEnforcement string     `json:"request_enforcement" yaml:"request_enforcement"`
+	CORS               CORSConfig `json:"cors" yaml:"cors"`
+}
+
+// CORSConfig represents CORS-related settings for a merchant
+type CORSConfig struct {
+	Origins []string `json:"origins" yaml:"origins"`
 }
 
 // YandexConfig represents Yandex API configuration
