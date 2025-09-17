@@ -1,0 +1,100 @@
+services:
+  yapay-sdk-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: yapay-sdk-dev
+    volumes:
+      # Mount SDK source code for development
+      - .:/workspace/sdk:rw
+      # Mount examples for testing
+      - ./examples:/workspace/examples:rw
+      # Mount tools for development
+      - ./tools:/workspace/tools:rw
+      # Mount plugins directory (if exists)
+      - ./plugins:/workspace/plugins:rw
+      # Mount Go module cache for faster builds
+      - go-mod-cache:/go/pkg/mod
+      # Mount Go build cache
+      - go-build-cache:/root/.cache/go-build
+      # Mount development tools cache
+      - dev-tools-cache:/root/.cache
+    environment:
+      # Development environment variables
+      - GO111MODULE=on
+      - CGO_ENABLED=1
+      - LOG_LEVEL=debug
+      - GIN_MODE=debug
+      # Development tools
+      - AIR_WORKSPACE=/workspace/sdk
+      - AIR_TMP_DIR=/tmp
+    ports:
+      # SDK development server
+      - "8080:8080"
+      # Debug port for delve
+      - "2345:2345"
+      # Additional development port
+      - "8081:8081"
+    networks:
+      - yapay-dev
+    # Keep container running for development
+    tty: true
+    stdin_open: true
+    # Restart policy for development
+    restart: unless-stopped
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=false"  # Disable traefik for development
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Yapay server for integration testing
+  yapay-server-dev:
+    image: metalmon/yapay:latest
+    container_name: yapay-server-dev
+    volumes:
+      # Mount plugins from SDK development
+      - ./plugins:/app/plugins:ro
+      # Mount example plugins for testing
+      - ./examples:/app/examples:ro
+    environment:
+      - PORT=8082
+      - LOG_LEVEL=debug
+      - GIN_MODE=debug
+    ports:
+      - "8082:8082"
+    networks:
+      - yapay-dev
+    depends_on:
+      - yapay-sdk-dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=false"  # Disable traefik for development
+
+volumes:
+  go-mod-cache:
+    driver: local
+  go-build-cache:
+    driver: local
+  dev-tools-cache:
+    driver: local
+
+networks:
+  yapay-dev:
+    driver: bridge
+    name: yapay-dev-network

@@ -1,0 +1,64 @@
+# Development Container Files
+# Files to ignore in development environment
+
+# Docker volumes and caches
+docker-volumes/
+go-mod-cache/
+go-build-cache/
+dev-tools-cache/
+
+# Development logs
+dev-logs-*.log
+*.log
+
+# Coverage reports
+coverage.out
+coverage.html
+coverage.xml
+
+# Profiling data
+*.prof
+*.pprof
+mem.prof
+cpu.prof
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Development environment files
+.env.dev
+.env.local
+.env.development
+
+# Build artifacts
+*.so
+*.exe
+*.dll
+*.dylib
+
+# Test artifacts
+test-results/
+test-output/
+
+# Development container data
+.devcontainer/
+dev-data/
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Development scripts output
+scripts/output/
+scripts/temp/

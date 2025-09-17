@@ -1,4 +1,4 @@
-.PHONY: help build test clean install-deps lint
+.PHONY: help build test clean install-deps lint dev-build dev-run dev-stop dev-shell dev-logs dev-status dev-clean dev-setup dev-test dev-debug dev-plugins dev-server dev-tunnel dev-tunnel-start dev-tunnel-stop dev-tunnel-status dev-tunnel-url
 
 # Default target
 help:
@@ -15,10 +15,31 @@ help:
 	@echo "  sdk-test     - Test SDK"
 	@echo "  tools-build  - Build development tools"
 	@echo ""
+	@echo "Development Container Commands:"
+	@echo "  dev-build    - Build development container"
+	@echo "  dev-run      - Run development container"
+	@echo "  dev-stop     - Stop development container"
+	@echo "  dev-shell    - Open shell in development container"
+	@echo "  dev-logs     - Show development container logs"
+	@echo "  dev-status   - Show development container status"
+	@echo "  dev-clean    - Clean development container and volumes"
+	@echo "  dev-setup    - Setup development environment"
+	@echo "  dev-test     - Run tests in development container"
+	@echo "  dev-debug    - Start debug session in container"
+	@echo "  dev-plugins  - Build and test plugins in container"
+	@echo "  dev-server   - Start Yapay server for integration testing"
+	@echo "  dev-tunnel   - Start CloudPub tunnel for webhook testing"
+	@echo "  dev-tunnel-start  - Start CloudPub tunnel"
+	@echo "  dev-tunnel-stop   - Stop CloudPub tunnel"
+	@echo "  dev-tunnel-status - Show tunnel status"
+	@echo "  dev-tunnel-url    - Get tunnel URL"
+	@echo ""
 	@echo "Examples:"
 	@echo "  make build                    # Build all examples"
 	@echo "  make test                     # Test all examples"
 	@echo "  make -C examples/simple-plugin build  # Build specific plugin"
+	@echo "  make dev-run                  # Start development container"
+	@echo "  make dev-shell                # Open shell in container"
 
 # Build all examples
 build:
@@ -107,3 +128,156 @@ update-sdk-deps:
 	@echo "Updating SDK dependencies..."
 	@go get -u ./...
 	@go mod tidy
+
+# Development Container Commands
+
+# Build development container
+dev-build:
+	@echo "Building development container..."
+	docker compose -f docker-compose.dev.yml build
+	@echo "Development container built successfully!"
+
+# Run development container
+dev-run: dev-build
+	@echo "Starting development container..."
+	docker compose -f docker-compose.dev.yml up -d
+	@echo "Development container started successfully!"
+	@echo "SDK Development Server: http://localhost:8080"
+	@echo "Debug Port: 2345"
+	@echo "Use 'make dev-shell' to open shell in container"
+
+# Stop development container
+dev-stop:
+	@echo "Stopping development container..."
+	docker compose -f docker-compose.dev.yml down
+	@echo "Development container stopped successfully!"
+
+# Open shell in development container
+dev-shell:
+	@echo "Opening shell in development container..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash
+
+# Show development container logs
+dev-logs:
+	@echo "Showing development container logs..."
+	docker compose -f docker-compose.dev.yml logs -f
+
+# Show development container status
+dev-status:
+	@echo "Development container status:"
+	docker compose -f docker-compose.dev.yml ps
+
+# Clean development container and volumes
+dev-clean:
+	@echo "Cleaning development container and volumes..."
+	docker compose -f docker-compose.dev.yml down -v
+	docker system prune -f
+	@echo "Development environment cleaned successfully!"
+
+# Setup development environment
+dev-setup: dev-run
+	@echo "Setting up development environment..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && go mod download && go mod verify"
+	@echo "Development environment setup completed!"
+
+# Run tests in development container
+dev-test:
+	@echo "Running tests in development container..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make test"
+
+# Start debug session in container
+dev-debug:
+	@echo "Starting debug session..."
+	@echo "Debug port: 2345"
+	@echo "Use your IDE to connect to localhost:2345"
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && dlv debug --headless --listen=:2345 --api-version=2"
+
+# Build and test plugins in container
+dev-plugins:
+	@echo "Building and testing plugins in development container..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make build && make test"
+
+# Start Yapay server for integration testing
+dev-server:
+	@echo "Starting Yapay server for integration testing..."
+	docker compose -f docker-compose.dev.yml up -d yapay-server-dev
+	@echo "Yapay server started on http://localhost:8082"
+	@echo "Use 'make dev-plugins' to build plugins for testing"
+
+# Restart development container
+dev-restart: dev-stop dev-run
+	@echo "Development container restarted successfully!"
+
+# Show development container health
+dev-health:
+	@echo "Checking development container health..."
+	@curl -s http://localhost:8080/health | jq . || echo "Health check failed"
+
+# Install development dependencies in container
+dev-install-deps:
+	@echo "Installing development dependencies in container..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make install-deps"
+
+# Run linter in development container
+dev-lint:
+	@echo "Running linter in development container..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make lint"
+
+# Format code in development container
+dev-fmt:
+	@echo "Formatting code in development container..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && go fmt ./..."
+
+# Run security scan in development container
+dev-security:
+	@echo "Running security scan in development container..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && gosec ./..."
+
+# Run all checks in development container
+dev-check: dev-fmt dev-lint dev-test dev-security
+	@echo "All checks completed in development container!"
+
+# Hot reload development (restart container with new code)
+dev-reload: dev-stop dev-run
+	@echo "Development container reloaded with latest code!"
+
+# Show development container resource usage
+dev-stats:
+	@echo "Development container resource usage:"
+	docker stats yapay-sdk-dev --no-stream
+
+# Export development container logs
+dev-export-logs:
+	@echo "Exporting development container logs..."
+	docker compose -f docker-compose.dev.yml logs > dev-logs-$(shell date +%Y%m%d-%H%M%S).log
+	@echo "Logs exported successfully!"
+
+# CloudPub Tunnel Commands
+
+# Start CloudPub tunnel for webhook testing
+dev-tunnel: dev-tunnel-start
+
+# Start CloudPub tunnel
+dev-tunnel-start:
+	@echo "Starting CloudPub tunnel for webhook testing..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh start"
+
+# Stop CloudPub tunnel
+dev-tunnel-stop:
+	@echo "Stopping CloudPub tunnel..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh stop"
+
+# Show CloudPub tunnel status
+dev-tunnel-status:
+	@echo "Checking CloudPub tunnel status..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh status"
+
+# Get CloudPub tunnel URL
+dev-tunnel-url:
+	@echo "Getting CloudPub tunnel URL..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh url"
+
+# Restart CloudPub tunnel
+dev-tunnel-restart:
+	@echo "Restarting CloudPub tunnel..."
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh restart"

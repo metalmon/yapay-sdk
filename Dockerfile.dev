@@ -1,0 +1,94 @@
+# Development container for Yapay SDK
+# Based on Yapay server image with development tools
+
+FROM metalmon/yapay:latest
+
+# Switch to root for development setup
+USER root
+
+# Install development tools and dependencies
+RUN apk add --no-cache \
+    # Build tools
+    make \
+    git \
+    curl \
+    wget \
+    jq \
+    # Development tools
+    vim \
+    nano \
+    htop \
+    tree \
+    # Network tools
+    netcat-openbsd \
+    tcpdump \
+    # Debugging tools
+    strace \
+    gdb \
+    # Go development tools
+    go \
+    # Additional utilities
+    bash \
+    bash-completion \
+    && rm -rf /var/cache/apk/*
+
+# Install CloudPub tunnel tool (like in main yapay project)
+RUN CLOUDPUB_VERSION="2.4.1" && \
+    CLOUDPUB_ARCH="linux-x86_64" && \
+    CLOUDPUB_URL="https://cloudpub.ru/download/stable/clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" && \
+    wget -q "$CLOUDPUB_URL" -O "clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" && \
+    tar -xf "clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" && \
+    chmod +x ./clo && \
+    mv ./clo /usr/local/bin/clo && \
+    rm -f "clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" && \
+    clo --version
+
+# Install Go development tools
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest && \
+    go install github.com/go-delve/delve/cmd/dlv@latest && \
+    go install github.com/air-verse/air@latest
+
+# Create development workspace
+WORKDIR /workspace
+
+# Create directories for SDK development
+RUN mkdir -p /workspace/sdk /workspace/examples /workspace/tools /workspace/plugins
+
+# Copy SDK files (will be mounted as volume in development)
+COPY . /workspace/sdk/
+
+# Set up bash completion
+RUN echo 'source /usr/share/bash-completion/bash_completion' >> /root/.bashrc && \
+    echo 'alias ll="ls -la"' >> /root/.bashrc && \
+    echo 'alias la="ls -la"' >> /root/.bashrc && \
+    echo 'alias ..="cd .."' >> /root/.bashrc && \
+    echo 'alias ...="cd ../.."' >> /root/.bashrc
+
+# Create development user
+RUN addgroup -g 1000 -S dev && \
+    adduser -u 1000 -S dev -G dev -s /bin/bash
+
+# Set up development environment
+RUN echo 'export PATH=$PATH:/go/bin' >> /root/.bashrc && \
+    echo 'export PATH=$PATH:/go/bin' >> /home/dev/.bashrc && \
+    echo 'export GOPATH=/go' >> /root/.bashrc && \
+    echo 'export GOPATH=/go' >> /home/dev/.bashrc
+
+# Set ownership of workspace
+RUN chown -R dev:dev /workspace
+
+# Create development scripts directory
+RUN mkdir -p /scripts && chown -R dev:dev /scripts
+
+# Switch to development user
+USER dev
+
+# Set working directory
+WORKDIR /workspace/sdk
+
+# Expose ports for development
+EXPOSE 8080 8081 2345
+
+# Default command - keep container running
+CMD ["tail", "-f", "/dev/null"]
