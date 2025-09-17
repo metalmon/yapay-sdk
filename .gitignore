@@ -35,6 +35,7 @@ Thumbs.db
 
 # Plugin build artifacts
 plugins/
+src/
 *.so
 
 # Logs

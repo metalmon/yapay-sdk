@@ -1,4 +1,4 @@
-.PHONY: help build test clean install-deps lint dev-build dev-run dev-stop dev-shell dev-logs dev-status dev-clean dev-setup dev-test dev-debug dev-plugins dev-server dev-tunnel dev-tunnel-start dev-tunnel-stop dev-tunnel-status dev-tunnel-url
+.PHONY: help build examples all test clean install-deps lint dev-build dev-run dev-stop dev-shell dev-logs dev-status dev-clean dev-setup dev-test dev-debug dev-plugins dev-server dev-tunnel dev-tunnel-start dev-tunnel-stop dev-tunnel-status dev-tunnel-url
 
 # Default target
 help:
@@ -6,8 +6,10 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  help         - Show this help message"
-	@echo "  build        - Build all examples"
-	@echo "  test         - Run tests for all examples"
+	@echo "  build        - Build all plugins from src/"
+	@echo "  examples     - Build all examples"
+	@echo "  all          - Build everything"
+	@echo "  test         - Run tests for all plugins and examples"
 	@echo "  clean        - Clean build artifacts"
 	@echo "  install-deps - Install development dependencies"
 	@echo "  lint         - Run linter on all code"
@@ -35,14 +37,27 @@ help:
 	@echo "  dev-tunnel-url    - Get tunnel URL"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make build                    # Build all examples"
-	@echo "  make test                     # Test all examples"
-	@echo "  make -C examples/simple-plugin build  # Build specific plugin"
+	@echo "  make build                    # Build all plugins from src/"
+	@echo "  make examples                 # Build all examples"
+	@echo "  make all                      # Build everything"
+	@echo "  make test                     # Test all plugins and examples"
+	@echo "  make -C src/my-plugin build   # Build specific plugin"
+	@echo "  make -C examples/simple-plugin build  # Build example plugin"
 	@echo "  make dev-run                  # Start development container"
 	@echo "  make dev-shell                # Open shell in container"
 
-# Build all examples
+# Build all plugins from src/
 build:
+	@echo "Building all plugins from src/..."
+	@for plugin in src/*/; do \
+		if [ -f "$$plugin/Makefile" ]; then \
+			echo "Building $$plugin..."; \
+			$(MAKE) -C "$$plugin" build; \
+		fi; \
+	done
+
+# Build all examples
+examples:
 	@echo "Building all examples..."
 	@for example in examples/*/; do \
 		if [ -f "$$example/Makefile" ]; then \
@@ -51,23 +66,29 @@ build:
 		fi; \
 	done
 
-# Test all examples
+# Build everything (plugins + examples)
+all:
+	@echo "Building everything..."
+	@$(MAKE) build
+	@$(MAKE) examples
+
+# Test all plugins and examples
 test:
-	@echo "Testing all examples..."
-	@for example in examples/*/; do \
-		if [ -f "$$example/Makefile" ]; then \
-			echo "Testing $$example..."; \
-			$(MAKE) -C "$$example" test; \
+	@echo "Testing all plugins and examples..."
+	@for plugin in src/*/ examples/*/; do \
+		if [ -f "$$plugin/Makefile" ]; then \
+			echo "Testing $$plugin..."; \
+			$(MAKE) -C "$$plugin" test; \
 		fi; \
 	done
 
 # Clean all build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
-	@for example in examples/*/; do \
-		if [ -f "$$example/Makefile" ]; then \
-			echo "Cleaning $$example..."; \
-			$(MAKE) -C "$$example" clean; \
+	@for plugin in src/*/ examples/*/; do \
+		if [ -f "$$plugin/Makefile" ]; then \
+			echo "Cleaning $$plugin..."; \
+			$(MAKE) -C "$$plugin" clean; \
 		fi; \
 	done
 	@$(MAKE) -C tools/plugin-debug clean
@@ -104,24 +125,24 @@ new-plugin:
 		echo "Usage: make new-plugin NAME=my-plugin"; \
 		exit 1; \
 	fi; \
-	if [ -d "examples/$(NAME)" ]; then \
+	if [ -d "src/$(NAME)" ]; then \
 		echo "Error: Plugin '$(NAME)' already exists"; \
 		exit 1; \
 	fi; \
 	echo "Creating new plugin: $(NAME)"; \
-	cp -r examples/simple-plugin examples/$(NAME); \
-	cd examples/$(NAME) && \
+	cp -r examples/simple-plugin src/$(NAME); \
+	cd src/$(NAME) && \
 	sed -i "s/simple-plugin/$(NAME)/g" go.mod && \
 	sed -i "s/Simple Plugin Example/$(NAME)/g" config.yaml && \
 	sed -i "s/simple-plugin/$(NAME)/g" Makefile && \
-	echo "Plugin '$(NAME)' created in examples/$(NAME)/"
+	echo "Plugin '$(NAME)' created in src/$(NAME)/"
 
-# Check if all examples build successfully
+# Check if all plugins and examples build successfully
 check-all:
-	@echo "Checking all examples..."
-	@$(MAKE) build
+	@echo "Checking all plugins and examples..."
+	@$(MAKE) all
 	@$(MAKE) test
-	@echo "✅ All examples build and test successfully"
+	@echo "✅ All plugins and examples build and test successfully"
 
 # Update SDK dependencies
 update-sdk-deps:

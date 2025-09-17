@@ -39,8 +39,8 @@
 
 1. **Создайте новый плагин:**
    ```bash
-   cp -r examples/simple-plugin my-plugin
-   cd my-plugin
+   make new-plugin NAME=my-plugin
+   cd src/my-plugin
    ```
 
 2. **Настройте зависимости:**
@@ -81,7 +81,8 @@
 
 - [Яндекс.Пей документация](https://pay.yandex.ru/docs/ru/custom/backend/merchant-api/index)
 - [Go плагины](https://pkg.go.dev/plugin)
-- [Примеры плагинов](../examples/)
+- [Примеры плагинов](../examples/) - Шаблоны для создания плагинов
+- [Рабочие плагины](../src/) - Готовые плагины
 
 ## ❓ Нужна помощь?
 
