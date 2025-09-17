@@ -271,6 +271,142 @@ components:
             amount: ["Amount must be positive"]
             currency: ["Currency is required"]
 
+    SecurityConfig:
+      type: object
+      description: Конфигурация безопасности для мерчанта
+      required:
+        - request_enforcement
+        - rate_limit
+        - cors
+      properties:
+        request_enforcement:
+          type: string
+          description: Политика валидации запросов
+          enum: ["strict", "origin", "monitor"]
+          example: "strict"
+        rate_limit:
+          type: integer
+          description: Лимит запросов в минуту
+          minimum: 1
+          example: 100
+        cors:
+          $ref: '#/components/schemas/CORSConfig'
+
+    CORSConfig:
+      type: object
+      description: Настройки CORS для мерчанта
+      required:
+        - origins
+      properties:
+        origins:
+          type: array
+          description: Список разрешенных доменов для CORS
+          items:
+            type: string
+            format: uri
+          example:
+            - "https://example.com"
+            - "https://shop.example.com"
+            - "https://admin.example.com"
+
+    Merchant:
+      type: object
+      description: Конфигурация мерчанта
+      required:
+        - id
+        - name
+        - domain
+        - enabled
+        - sandbox_mode
+        - security
+        - yandex
+        - notifications
+      properties:
+        id:
+          type: string
+          description: Уникальный идентификатор мерчанта
+          example: "merchant_123"
+        name:
+          type: string
+          description: Название мерчанта
+          example: "My Shop"
+        description:
+          type: string
+          description: Описание мерчанта
+          example: "Онлайн магазин курсов"
+        domain:
+          type: string
+          description: Домен мерчанта
+          example: "myshop.com"
+        enabled:
+          type: boolean
+          description: Включен ли мерчант
+          example: true
+        sandbox_mode:
+          type: boolean
+          description: Режим песочницы
+          example: true
+        security:
+          $ref: '#/components/schemas/SecurityConfig'
+        metadata:
+          type: object
+          description: Дополнительные метаданные
+          additionalProperties: true
+        yandex:
+          type: object
+          description: Конфигурация Яндекс.Пей
+          properties:
+            merchant_id:
+              type: string
+              example: "yandex_merchant_123"
+            secret_key:
+              type: string
+              example: "secret_key_123"
+            sandbox_mode:
+              type: boolean
+              example: true
+            currency:
+              type: string
+              enum: ["RUB", "UZS"]
+              example: "RUB"
+        notifications:
+          type: object
+          description: Конфигурация уведомлений
+          properties:
+            telegram:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  example: true
+                chat_id:
+                  type: string
+                  example: "123456789"
+                bot_token:
+                  type: string
+                  example: "bot_token_123"
+            email:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  example: false
+                smtp_host:
+                  type: string
+                  example: "smtp.gmail.com"
+                smtp_port:
+                  type: integer
+                  example: 587
+                username:
+                  type: string
+                  example: "user@gmail.com"
+                password:
+                  type: string
+                  example: "password123"
+                from:
+                  type: string
+                  example: "noreply@myshop.com"
+
   securitySchemes:
     ApiKeyAuth:
       type: apiKey

@@ -264,6 +264,44 @@ func (g *MyPaymentGenerator) CustomizeYandexPayload(payload map[string]interface
 
 ## Структуры данных
 
+### SecurityConfig
+
+Представляет конфигурацию безопасности для мерчанта.
+
+**Поля:**
+- `RequestEnforcement` (string) - политика валидации запросов: `strict` | `origin` | `monitor`
+- `RateLimit` (int) - лимит запросов в минуту
+- `CORS` (CORSConfig) - настройки CORS
+
+**Пример:**
+```go
+security := SecurityConfig{
+    RequestEnforcement: "strict",
+    RateLimit:          100,
+    CORS: CORSConfig{
+        Origins: []string{"https://example.com", "https://shop.example.com"},
+    },
+}
+```
+
+### CORSConfig
+
+Представляет настройки CORS для мерчанта.
+
+**Поля:**
+- `Origins` ([]string) - список разрешенных доменов для CORS
+
+**Пример:**
+```go
+cors := CORSConfig{
+    Origins: []string{
+        "https://example.com",
+        "https://shop.example.com",
+        "https://admin.example.com",
+    },
+}
+```
+
 ### PaymentRequest
 
 ```go
@@ -305,12 +343,30 @@ type Merchant struct {
     Domain        string                 `json:"domain" yaml:"domain"`
     Enabled       bool                   `json:"enabled" yaml:"enabled"`
     SandboxMode   bool                   `json:"sandbox_mode" yaml:"sandbox_mode"`
-    CORSOrigins   []string               `json:"cors_origins" yaml:"cors_origins"`
-    RateLimit     int                    `json:"rate_limit" yaml:"rate_limit"`
+    Security      SecurityConfig         `json:"security" yaml:"security"`
     Metadata      map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
     Yandex        YandexConfig           `json:"yandex" yaml:"yandex"`
     Notifications NotificationConfig     `json:"notifications" yaml:"notifications"`
     FieldLabels   FieldLabels            `json:"field_labels,omitempty" yaml:"field_labels,omitempty"`
+}
+```
+
+### SecurityConfig
+
+```go
+type SecurityConfig struct {
+    // RequestEnforcement controls request validation policy: strict | origin | monitor
+    RequestEnforcement string     `json:"request_enforcement" yaml:"request_enforcement"`
+    RateLimit          int        `json:"rate_limit" yaml:"rate_limit"`
+    CORS               CORSConfig `json:"cors" yaml:"cors"`
+}
+```
+
+### CORSConfig
+
+```go
+type CORSConfig struct {
+    Origins []string `json:"origins" yaml:"origins"`
 }
 ```
 
@@ -390,3 +446,37 @@ h.logger.WithField("merchant_id", merchant.ID).Info("Processing payment")
 // Плохо
 h.logger.WithField("secret_key", merchant.Yandex.SecretKey).Info("Processing payment")
 ```
+
+### 5. Конфигурация безопасности
+
+Используйте новую структуру `SecurityConfig` для настройки безопасности:
+
+```go
+// Хорошо - новая структура SecurityConfig
+merchant := &Merchant{
+    ID:   "my_merchant",
+    Name: "My Shop",
+    Security: SecurityConfig{
+        RequestEnforcement: "strict",  // Строгая валидация
+        RateLimit:          100,       // 100 запросов в минуту
+        CORS: CORSConfig{
+            Origins: []string{"https://myshop.com"},
+        },
+    },
+    // ... остальные поля
+}
+
+// Плохо - старая структура (устарела)
+merchant := &Merchant{
+    ID:          "my_merchant",
+    Name:        "My Shop",
+    CORSOrigins: []string{"https://myshop.com"}, // Устарело!
+    RateLimit:   100,                            // Устарело!
+    // ... остальные поля
+}
+```
+
+**Политики RequestEnforcement:**
+- `strict` - строгая валидация всех запросов
+- `origin` - валидация только по Origin заголовку
+- `monitor` - мониторинг без блокировки
