@@ -1,20 +1,17 @@
 # Development Dockerfile for YAPAY SDK
-# Uses the existing Dockerfile.dev from the project root
-FROM metalmon/yapay:latest
+# Based on the official builder for 100% consistency
+FROM metalmon/yapay:builder
 
 # Switch to root for development setup
 USER root
 
-# Install additional development tools
+# Install additional development tools (build tools like git, gcc, make are already in the base image)
 RUN apk add --no-cache \
-    # Build tools
-    make \
-    git \
+    # Development tools
     curl \
     wget \
     jq \
     file \
-    # Development tools
     vim \
     nano \
     htop \
@@ -40,16 +37,12 @@ RUN CLOUDPUB_VERSION="2.4.1" && \
     rm -f "clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" || \
     echo "CloudPub tunnel installation failed - continuing without it"
 
-# Install Go development tools
-RUN if command -v go >/dev/null 2>&1; then \
-        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
-        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest && \
-        go install github.com/go-delve/delve/cmd/dlv@latest && \
-        go install github.com/air-verse/air@latest && \
-        go install golang.org/x/tools/cmd/goimports@latest; \
-    else \
-        echo "Go not found in base image, skipping Go tools installation"; \
-    fi
+# Install Go development tools (Go is guaranteed to be in the base image)
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+    go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest && \
+    go install github.com/go-delve/delve/cmd/dlv@latest && \
+    go install github.com/air-verse/air@latest && \
+    go install golang.org/x/tools/cmd/goimports@latest
 
 # Create development workspace
 WORKDIR /workspace
@@ -72,8 +65,8 @@ RUN addgroup -g 1000 -S dev && \
     echo 'export PATH=$PATH:/go/bin' >> /home/dev/.bashrc && \
     echo 'export GOPATH=/go' >> /home/dev/.bashrc
 
-# Set ownership of workspace
-RUN chown -R dev:dev /workspace
+# Set ownership of workspace and Go cache
+RUN chown -R dev:dev /workspace /go
 
 # Create development scripts directory
 RUN mkdir -p /scripts && chown -R dev:dev /scripts
