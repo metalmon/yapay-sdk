@@ -204,4 +204,5 @@ const (
 	NotificationTypePaymentSuccess NotificationType = "payment_success"
 	NotificationTypePaymentFailed  NotificationType = "payment_failed"
 	NotificationTypeSystemError    NotificationType = "system_error"
+	NotificationTypeWebhook        NotificationType = "webhook"
 )
