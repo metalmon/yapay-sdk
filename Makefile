@@ -1,5 +1,8 @@
 .PHONY: help build examples all test clean install-deps lint dev-build dev-run dev-stop dev-shell dev-logs dev-status dev-clean dev-setup dev-test dev-debug dev-plugins dev-server dev-tunnel dev-tunnel-start dev-tunnel-stop dev-tunnel-status dev-tunnel-url plugins plugin-% build-plugins-alpine build-plugins-via-devcontainer build-plugin-alpine-% build-plugin-via-devcontainer-%
 
+# Configuration
+DOCKER_IMAGE := metalmon/yapay
+
 # Colors
 GREEN := \033[0;32m
 YELLOW := \033[1;33m
@@ -9,53 +12,53 @@ NC := \033[0m # No Color
 
 # Default target
 help:
-	@echo "Yapay Plugin Development Kit"
-	@echo ""
-	@echo "Available targets:"
-	@echo "  help         - Show this help message"
-	@echo "  plugins      - Build all plugins (smart environment detection)"
-	@echo "  plugin-NAME  - Build specific plugin (smart environment detection)"
-	@echo "  build        - Build all plugins from src/ (legacy)"
-	@echo "  examples     - Build all examples"
-	@echo "  all          - Build everything"
-	@echo "  test         - Run tests for all plugins and examples"
-	@echo "  clean        - Clean build artifacts"
-	@echo "  install-deps - Install development dependencies"
-	@echo "  lint         - Run linter on all code"
-	@echo "  sdk-build    - Build SDK"
-	@echo "  sdk-test     - Test SDK"
-	@echo "  tools-build  - Build development tools"
-	@echo ""
-	@echo "Development Container Commands:"
-	@echo "  dev-build       - Build development container"
-	@echo "  docker-build-dev - Build devcontainer image for plugin compilation"
-	@echo "  dev-run         - Run development container"
-	@echo "  dev-stop        - Stop development container"
-	@echo "  dev-shell       - Open shell in development container"
-	@echo "  dev-logs        - Show development container logs"
-	@echo "  dev-status      - Show development container status"
-	@echo "  dev-clean       - Clean development container and volumes"
-	@echo "  dev-setup       - Setup development environment"
-	@echo "  dev-test        - Run tests in development container"
-	@echo "  dev-debug       - Start debug session in container"
-	@echo "  dev-plugins     - Build and test plugins in container"
-	@echo "  dev-server      - Start Yapay server for integration testing"
-	@echo "  dev-tunnel      - Start CloudPub tunnel for webhook testing"
-	@echo "  dev-tunnel-start  - Start CloudPub tunnel"
-	@echo "  dev-tunnel-stop   - Stop CloudPub tunnel"
-	@echo "  dev-tunnel-status - Show tunnel status"
-	@echo "  dev-tunnel-url    - Get tunnel URL"
-	@echo ""
-	@echo "Examples:"
-	@echo "  make plugins                  # Build all plugins (smart detection)"
-	@echo "  make plugin-my-plugin         # Build specific plugin (smart detection)"
-	@echo "  make examples                 # Build all examples"
-	@echo "  make all                      # Build everything"
-	@echo "  make test                     # Test all plugins and examples"
-	@echo "  make -C src/my-plugin build   # Build specific plugin (legacy)"
-	@echo "  make -C examples/simple-plugin build  # Build example plugin"
-	@echo "  make dev-run                  # Start development container"
-	@echo "  make dev-shell                # Open shell in container"
+	@printf "$(GREEN)Yapay Plugin Development Kit$(NC)\n"
+	@printf "\n"
+	@printf "$(YELLOW)Available targets:$(NC)\n"
+	@printf "  help         - Show this help message\n"
+	@printf "  plugins      - Build all plugins (smart environment detection)\n"
+	@printf "  plugin-NAME  - Build specific plugin (smart environment detection)\n"
+	@printf "  build        - Build all plugins from src/ (legacy)\n"
+	@printf "  examples     - Build all examples\n"
+	@printf "  all          - Build everything\n"
+	@printf "  test         - Run tests for all plugins and examples\n"
+	@printf "  clean        - Clean build artifacts\n"
+	@printf "  install-deps - Install development dependencies\n"
+	@printf "  lint         - Run linter on all code\n"
+	@printf "  sdk-build    - Build SDK\n"
+	@printf "  sdk-test     - Test SDK\n"
+	@printf "  tools-build  - Build development tools\n"
+	@printf "\n"
+	@printf "$(YELLOW)Development Container Commands:$(NC)\n"
+	@printf "  dev-build       - Build development container\n"
+	@printf "  docker-build-dev - Build devcontainer image for plugin compilation\n"
+	@printf "  dev-run         - Run development container\n"
+	@printf "  dev-stop        - Stop development container\n"
+	@printf "  dev-shell       - Open shell in development container\n"
+	@printf "  dev-logs        - Show development container logs\n"
+	@printf "  dev-status      - Show development container status\n"
+	@printf "  dev-clean       - Clean development container and volumes\n"
+	@printf "  dev-setup       - Setup development environment\n"
+	@printf "  dev-test        - Run tests in development container\n"
+	@printf "  dev-debug       - Start debug session in container\n"
+	@printf "  dev-plugins     - Build and test plugins in container\n"
+	@printf "  dev-server      - Start Yapay server for integration testing\n"
+	@printf "  dev-tunnel      - Start CloudPub tunnel for webhook testing\n"
+	@printf "  dev-tunnel-start  - Start CloudPub tunnel\n"
+	@printf "  dev-tunnel-stop   - Stop CloudPub tunnel\n"
+	@printf "  dev-tunnel-status - Show tunnel status\n"
+	@printf "  dev-tunnel-url    - Get tunnel URL\n"
+	@printf "\n"
+	@printf "$(YELLOW)Examples:$(NC)\n"
+	@printf "  make plugins                  # Build all plugins (smart detection)\n"
+	@printf "  make plugin-my-plugin         # Build specific plugin (smart detection)\n"
+	@printf "  make examples                 # Build all examples\n"
+	@printf "  make all                      # Build everything\n"
+	@printf "  make test                     # Test all plugins and examples\n"
+	@printf "  make -C src/my-plugin build   # Build specific plugin (legacy)\n"
+	@printf "  make -C examples/simple-plugin build  # Build example plugin\n"
+	@printf "  make dev-run                  # Start development container\n"
+	@printf "  make dev-shell                # Open shell in container\n"
 
 # Smart plugin build - detects environment and uses devcontainer if needed
 plugins:
@@ -85,19 +88,14 @@ build-plugins-alpine:
 
 # Build plugins via devcontainer (when not in Alpine environment)
 build-plugins-via-devcontainer:
-	@printf "$(GREEN)Building plugins via devcontainer for Alpine compatibility...$(NC)\n"
-	@if ! docker ps -q --filter name=yapay-sdk-devcontainer | grep -q .; then \
-		printf "$(YELLOW)Devcontainer not running - starting it...$(NC)\n"; \
-		docker run --rm -d --name yapay-sdk-devcontainer \
-			-v $(PWD):/workspace \
-			-w /workspace \
-			yapay-sdk:dev \
-			tail -f /dev/null; \
-		sleep 2; \
+	@printf "$(GREEN)Building plugins using official builder image for compatibility...$(NC)\n"
+	@if ! docker image inspect $(DOCKER_IMAGE):builder >/dev/null 2>&1; then \
+		printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
+		docker pull $(DOCKER_IMAGE):builder; \
 	fi
-	@printf "$(YELLOW)Building plugins in devcontainer...$(NC)\n"
-	@docker exec yapay-sdk-devcontainer make build-plugins-alpine
-	@printf "$(GREEN)Plugins built via devcontainer successfully!$(NC)\n"
+	@printf "$(YELLOW)Building plugins inside the builder container...$(NC)\n"
+	@docker run --rm -v $(PWD):/workspace -w /workspace $(DOCKER_IMAGE):builder make build-plugins-alpine
+	@printf "$(GREEN)Plugins built successfully using the official builder!$(NC)\n"
 
 # Build individual plugin (smart environment detection)
 plugin-%:
@@ -132,22 +130,17 @@ build-plugin-alpine-%:
 # Build individual plugin via devcontainer
 build-plugin-via-devcontainer-%:
 	@plugin_name=$*; \
-	printf "$(GREEN)Building plugin: $$plugin_name via devcontainer...$(NC)\n"; \
-	if ! docker ps -q --filter name=yapay-sdk-devcontainer | grep -q .; then \
-		printf "$(YELLOW)Devcontainer not running - starting it...$(NC)\n"; \
-		docker run --rm -d --name yapay-sdk-devcontainer \
-			-v $(PWD):/workspace \
-			-w /workspace \
-			yapay-sdk:dev \
-			tail -f /dev/null; \
-		sleep 2; \
+	printf "$(GREEN)Building plugin: $$plugin_name using official builder image...$(NC)\n"; \
+	if ! docker image inspect $(DOCKER_IMAGE):builder >/dev/null 2>&1; then \
+		printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
+		docker pull $(DOCKER_IMAGE):builder; \
 	fi; \
-	printf "$(YELLOW)Building plugin $$plugin_name in devcontainer...$(NC)\n"; \
-	docker exec yapay-sdk-devcontainer make build-plugin-alpine-$$plugin_name; \
-	printf "$(GREEN)Plugin $$plugin_name built via devcontainer successfully!$(NC)\n"
+	printf "$(YELLOW)Building plugin $$plugin_name in builder container...$(NC)\n"; \
+	@docker run --rm -v $(PWD):/workspace -w /workspace $(DOCKER_IMAGE):builder make build-plugin-alpine-$$plugin_name; \
+	printf "$(GREEN)Plugin $$plugin_name built successfully using the official builder!$(NC)\n"
 
-# Build everything (plugins + examples)
-build: plugins examples
+# Legacy command for backward compatibility
+build: plugins
 
 # Build all examples
 examples:
@@ -247,130 +240,130 @@ update-sdk-deps:
 
 # Build development container
 dev-build:
-	@echo "Building development container..."
+	@printf "$(GREEN)Building development container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml build
-	@echo "Development container built successfully!"
+	@printf "$(GREEN)Development container built successfully!$(NC)\n"
 
 # Build devcontainer image for plugin compilation
 docker-build-dev:
-	@echo "Building devcontainer image..."
+	@printf "$(GREEN)Building devcontainer image...$(NC)\n"
 	docker build -f .devcontainer/Dockerfile.dev -t yapay-sdk:dev .
-	@echo "Devcontainer image built successfully!"
+	@printf "$(GREEN)Devcontainer image built successfully!$(NC)\n"
 
 # Run development container
 dev-run: dev-build
-	@echo "Starting development container..."
+	@printf "$(GREEN)Starting development container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml up -d
-	@echo "Development container started successfully!"
-	@echo "SDK Development Server: http://localhost:8080"
-	@echo "Debug Port: 2345"
-	@echo "Use 'make dev-shell' to open shell in container"
+	@printf "$(GREEN)Development container started successfully!$(NC)\n"
+	@printf "$(BLUE)SDK Development Server: http://localhost:8080$(NC)\n"
+	@printf "$(BLUE)Debug Port: 2345$(NC)\n"
+	@printf "$(YELLOW)Use 'make dev-shell' to open shell in container$(NC)\n"
 
 # Stop development container
 dev-stop:
-	@echo "Stopping development container..."
+	@printf "$(YELLOW)Stopping development container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml down
-	@echo "Development container stopped successfully!"
+	@printf "$(GREEN)Development container stopped successfully!$(NC)\n"
 
 # Open shell in development container
 dev-shell:
-	@echo "Opening shell in development container..."
+	@printf "$(GREEN)Opening shell in development container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash
 
 # Show development container logs
 dev-logs:
-	@echo "Showing development container logs..."
+	@printf "$(GREEN)Showing development container logs...$(NC)\n"
 	docker compose -f docker-compose.dev.yml logs -f
 
 # Show development container status
 dev-status:
-	@echo "Development container status:"
+	@printf "$(GREEN)Development container status:$(NC)\n"
 	docker compose -f docker-compose.dev.yml ps
 
 # Clean development container and volumes
 dev-clean:
-	@echo "Cleaning development container and volumes..."
+	@printf "$(YELLOW)Cleaning development container and volumes...$(NC)\n"
 	docker compose -f docker-compose.dev.yml down -v
 	docker system prune -f
-	@echo "Development environment cleaned successfully!"
+	@printf "$(GREEN)Development environment cleaned successfully!$(NC)\n"
 
 # Setup development environment
 dev-setup: dev-run
-	@echo "Setting up development environment..."
+	@printf "$(GREEN)Setting up development environment...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && GOPATH=\"\" GOCACHE=\"\" go mod download && GOPATH=\"\" GOCACHE=\"\" go mod verify"
-	@echo "Development environment setup completed!"
+	@printf "$(GREEN)Development environment setup completed!$(NC)\n"
 
 # Run tests in development container
 dev-test:
-	@echo "Running tests in development container..."
+	@printf "$(GREEN)Running tests in development container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make test"
 
 # Start debug session in container
 dev-debug:
-	@echo "Starting debug session..."
-	@echo "Debug port: 2345"
-	@echo "Use your IDE to connect to localhost:2345"
+	@printf "$(GREEN)Starting debug session...$(NC)\n"
+	@printf "$(YELLOW)Debug port: 2345$(NC)\n"
+	@printf "$(YELLOW)Use your IDE to connect to localhost:2345$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && dlv debug --headless --listen=:2345 --api-version=2"
 
 # Build and test plugins in container
 dev-plugins:
-	@echo "Building and testing plugins in development container..."
+	@printf "$(GREEN)Building and testing plugins in development container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make plugins && make test"
 
 # Start Yapay server for integration testing
 dev-server:
-	@echo "Starting Yapay server for integration testing..."
+	@printf "$(GREEN)Starting Yapay server for integration testing...$(NC)\n"
 	docker compose -f docker-compose.dev.yml up -d yapay-server-dev
-	@echo "Yapay server started on http://localhost:8082"
-	@echo "Use 'make dev-plugins' to build plugins for testing"
+	@printf "$(BLUE)Yapay server started on http://localhost:8082$(NC)\n"
+	@printf "$(YELLOW)Use 'make dev-plugins' to build plugins for testing$(NC)\n"
 
 # Restart development container
 dev-restart: dev-stop dev-run
-	@echo "Development container restarted successfully!"
+	@printf "$(GREEN)Development container restarted successfully!$(NC)\n"
 
 # Show development container health
 dev-health:
-	@echo "Checking development container health..."
-	@curl -s http://localhost:8080/health | jq . || echo "Health check failed"
+	@printf "$(GREEN)Checking development container health...$(NC)\n"
+	@curl -s http://localhost:8080/health | jq . || printf "$(RED)Health check failed$(NC)\n"
 
 # Install development dependencies in container
 dev-install-deps:
-	@echo "Installing development dependencies in container..."
+	@printf "$(GREEN)Installing development dependencies in container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make install-deps"
 
 # Run linter in development container
 dev-lint:
-	@echo "Running linter in development container..."
+	@printf "$(GREEN)Running linter in development container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make lint"
 
 # Format code in development container
 dev-fmt:
-	@echo "Formatting code in development container..."
+	@printf "$(GREEN)Formatting code in development container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && go fmt ./..."
 
 # Run security scan in development container
 dev-security:
-	@echo "Running security scan in development container..."
+	@printf "$(GREEN)Running security scan in development container...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && gosec ./..."
 
 # Run all checks in development container
 dev-check: dev-fmt dev-lint dev-test dev-security
-	@echo "All checks completed in development container!"
+	@printf "$(GREEN)All checks completed in development container!$(NC)\n"
 
 # Hot reload development (restart container with new code)
 dev-reload: dev-stop dev-run
-	@echo "Development container reloaded with latest code!"
+	@printf "$(GREEN)Development container reloaded with latest code!$(NC)\n"
 
 # Show development container resource usage
 dev-stats:
-	@echo "Development container resource usage:"
+	@printf "$(GREEN)Development container resource usage:$(NC)\n"
 	docker stats yapay-sdk-dev --no-stream
 
 # Export development container logs
 dev-export-logs:
-	@echo "Exporting development container logs..."
+	@printf "$(GREEN)Exporting development container logs...$(NC)\n"
 	docker compose -f docker-compose.dev.yml logs > dev-logs-$(shell date +%Y%m%d-%H%M%S).log
-	@echo "Logs exported successfully!"
+	@printf "$(GREEN)Logs exported successfully!$(NC)\n"
 
 # CloudPub Tunnel Commands
 
@@ -379,25 +372,25 @@ dev-tunnel: dev-tunnel-start
 
 # Start CloudPub tunnel
 dev-tunnel-start:
-	@echo "Starting CloudPub tunnel for webhook testing..."
+	@printf "$(GREEN)Starting CloudPub tunnel for webhook testing...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh start"
 
 # Stop CloudPub tunnel
 dev-tunnel-stop:
-	@echo "Stopping CloudPub tunnel..."
+	@printf "$(YELLOW)Stopping CloudPub tunnel...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh stop"
 
 # Show CloudPub tunnel status
 dev-tunnel-status:
-	@echo "Checking CloudPub tunnel status..."
+	@printf "$(GREEN)Checking CloudPub tunnel status...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh status"
 
 # Get CloudPub tunnel URL
 dev-tunnel-url:
-	@echo "Getting CloudPub tunnel URL..."
+	@printf "$(GREEN)Getting CloudPub tunnel URL...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh url"
 
 # Restart CloudPub tunnel
 dev-tunnel-restart:
-	@echo "Restarting CloudPub tunnel..."
+	@printf "$(GREEN)Restarting CloudPub tunnel...$(NC)\n"
 	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh restart"
