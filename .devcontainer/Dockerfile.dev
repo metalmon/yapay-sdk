@@ -1,30 +1,35 @@
-# Development Dockerfile for Yapay SDK - Alpine environment
-FROM golang:1.21-alpine
+# Development Dockerfile for YAPAY SDK
+# Uses the existing Dockerfile.dev from the project root
+FROM metalmon/yapay:latest
 
-# Install build dependencies including CGO support and development tools
+# Switch to root for development setup
+USER root
+
+# Install additional development tools
 RUN apk add --no-cache \
-    git \
-    ca-certificates \
-    tzdata \
-    gcc \
-    musl-dev \
+    # Build tools
     make \
+    git \
     curl \
     wget \
     jq \
+    file \
+    # Development tools
     vim \
     nano \
     htop \
     tree \
     bash \
     bash-completion \
+    # Network tools
     netcat-openbsd \
     tcpdump \
+    # Debugging tools
     strace \
     gdb \
     && rm -rf /var/cache/apk/*
 
-# Install CloudPub tunnel tool (optional)
+# Install CloudPub tunnel tool
 RUN CLOUDPUB_VERSION="2.4.1" && \
     CLOUDPUB_ARCH="linux-x86_64" && \
     CLOUDPUB_URL="https://cloudpub.ru/download/stable/clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" && \
@@ -35,46 +40,43 @@ RUN CLOUDPUB_VERSION="2.4.1" && \
     rm -f "clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" || \
     echo "CloudPub tunnel installation failed - continuing without it"
 
-# Install Go development tools (optional - can be installed later)
-RUN go install github.com/go-delve/delve/cmd/dlv@latest || echo "delve installation failed" && \
-    go install github.com/air-verse/air@latest || echo "air installation failed"
+# Install Go development tools
+RUN if command -v go >/dev/null 2>&1; then \
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest && \
+        go install github.com/go-delve/delve/cmd/dlv@latest && \
+        go install github.com/air-verse/air@latest && \
+        go install golang.org/x/tools/cmd/goimports@latest; \
+    else \
+        echo "Go not found in base image, skipping Go tools installation"; \
+    fi
 
-# Create development user (same as production)
-RUN addgroup -g 1001 -S yapay && \
-    adduser -u 1001 -S yapay -G yapay
-
-# Set working directory
+# Create development workspace
 WORKDIR /workspace
-
-# Copy go mod files
-COPY go.mod go.sum ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
-COPY . .
 
 # Create directories for SDK development
 RUN mkdir -p /workspace/sdk /workspace/examples /workspace/tools /workspace/plugins
 
 # Set up bash completion and aliases
-RUN echo 'source /usr/share/bash-completion/bash_completion' >> /home/yapay/.bashrc && \
-    echo 'alias ll="ls -la"' >> /home/yapay/.bashrc && \
-    echo 'alias la="ls -la"' >> /home/yapay/.bashrc && \
-    echo 'alias ..="cd .."' >> /home/yapay/.bashrc && \
-    echo 'alias ...="cd ../.."' >> /home/yapay/.bashrc && \
-    echo 'export PATH=$PATH:/go/bin' >> /home/yapay/.bashrc && \
-    echo 'export GOPATH=/go' >> /home/yapay/.bashrc
+RUN echo 'source /usr/share/bash-completion/bash_completion' >> /root/.bashrc && \
+    echo 'alias ll="ls -la"' >> /root/.bashrc && \
+    echo 'alias la="ls -la"' >> /root/.bashrc && \
+    echo 'alias ..="cd .."' >> /root/.bashrc && \
+    echo 'alias ...="cd ../.."' >> /root/.bashrc && \
+    echo 'export PATH=$PATH:/go/bin' >> /root/.bashrc && \
+    echo 'export GOPATH=/go' >> /root/.bashrc
 
-# Set ownership
-RUN chown -R yapay:yapay /workspace
+# Create development user
+RUN addgroup -g 1000 -S dev && \
+    adduser -u 1000 -S dev -G dev -s /bin/bash && \
+    echo 'export PATH=$PATH:/go/bin' >> /home/dev/.bashrc && \
+    echo 'export GOPATH=/go' >> /home/dev/.bashrc
 
-# Switch to development user
-USER yapay
+# Set ownership of workspace
+RUN chown -R dev:dev /workspace
 
-# Expose ports
-EXPOSE 8080 8081 2345 8082
+# Create development scripts directory
+RUN mkdir -p /scripts && chown -R dev:dev /scripts
 
 # Set environment variables
 ENV GO111MODULE=on
@@ -84,9 +86,13 @@ ENV CGO_ENABLED=1
 ENV GOOS=linux
 ENV GOARCH=amd64
 ENV LOG_LEVEL=debug
-ENV GIN_MODE=debug
-ENV AIR_WORKSPACE=/workspace/sdk
-ENV AIR_TMP_DIR=/tmp
+ENV YANDEX_SANDBOX_MODE=true
+ENV METRICS_PORT=8080
+ENV TERM=xterm-256color
+ENV COLORTERM=truecolor
 
-# Default command
-CMD ["bash"]
+# Expose ports for development
+EXPOSE 8080 8081 2345
+
+# Default command - keep container running
+CMD ["tail", "-f", "/dev/null"]

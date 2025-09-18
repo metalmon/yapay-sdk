@@ -71,7 +71,7 @@ build-plugins-alpine:
 		if [ -f "$$plugin/Makefile" ]; then \
 			plugin_name=$$(basename "$$plugin"); \
 			echo "Building plugin: $$plugin_name"; \
-			(cd "$$plugin" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+			(cd "$$plugin" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GOFLAGS="-mod=vendor" $(MAKE) build); \
 		fi; \
 	done
 	@echo "All plugins built successfully in Alpine environment!"
@@ -112,10 +112,10 @@ build-plugin-alpine-%:
 	@plugin_name=$*; \
 	echo "Building plugin: $$plugin_name in Alpine environment..."; \
 	if [ -f "src/$$plugin_name/Makefile" ]; then \
-		(cd "src/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+		(cd "src/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GOFLAGS="-mod=vendor" $(MAKE) build); \
 		echo "Plugin $$plugin_name built successfully in Alpine environment!"; \
 	elif [ -f "examples/$$plugin_name/Makefile" ]; then \
-		(cd "examples/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+		(cd "examples/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GOFLAGS="-mod=vendor" $(MAKE) build); \
 		echo "Plugin $$plugin_name built successfully in Alpine environment!"; \
 	else \
 		echo "Error: Plugin $$plugin_name not found in src/ or examples/"; \
@@ -193,12 +193,13 @@ lint:
 sdk-build:
 	@echo "Building SDK..."
 	@go mod tidy
-	@go build ./...
+	@go mod vendor
+	@go build -mod=vendor ./...
 
 # Test SDK
 sdk-test:
 	@echo "Testing SDK..."
-	@go test ./...
+	@go test -mod=vendor ./...
 
 # Build development tools
 tools-build:
@@ -290,7 +291,7 @@ dev-clean:
 # Setup development environment
 dev-setup: dev-run
 	@echo "Setting up development environment..."
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && go mod download && go mod verify"
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && go mod download && go mod vendor && go mod verify"
 	@echo "Development environment setup completed!"
 
 # Run tests in development container

@@ -1,9 +1,9 @@
 {
-  "name": "Yapay SDK - Development",
-  "build": {
-    "dockerfile": "Dockerfile.dev",
-    "context": ".."
-  },
+  "name": "YAPAY SDK Development Environment",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "yapay-sdk-development",
+  "workspaceFolder": "/workspace/sdk",
+  "shutdownAction": "stopCompose",
 
   // Configure tool-specific properties
   "customizations": {
@@ -30,8 +30,7 @@
         },
         "files.eol": "\n",
         "files.insertFinalNewline": true,
-        "files.trimTrailingWhitespace": true,
-        "terminal.integrated.defaultProfile.linux": "bash"
+        "files.trimTrailingWhitespace": true
       },
       "extensions": [
         "golang.Go",
@@ -43,16 +42,8 @@
         "github.vscode-pull-request-github",
         "ms-vscode.vscode-github-issue-notebooks",
         "ms-vscode.vscode-markdown",
+        "bradlc.vscode-tailwindcss",
         "esbenp.prettier-vscode",
-        "ms-vscode.vscode-typescript-next",
-        "ms-vscode.vscode-eslint",
-        "ms-vscode.vscode-prettier",
-        "ms-vscode.vscode-json",
-        "ms-vscode.vscode-yaml",
-        "ms-vscode.vscode-docker",
-        "ms-vscode.vscode-kubernetes-tools",
-        "ms-vscode.vscode-github-issue-notebooks",
-        "ms-vscode.vscode-markdown",
         "ms-vscode.vscode-typescript-next",
         "ms-vscode.vscode-eslint",
         "ms-vscode.vscode-prettier"
@@ -61,49 +52,23 @@
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally
-  "forwardPorts": [8080, 8081, 2345, 8082],
+  "forwardPorts": [8080, 8081, 8083, 2345],
 
   // Use 'postCreateCommand' to run commands after the container is created
-  "postCreateCommand": "cd /workspace/sdk && go mod download && go mod verify",
+  "postCreateCommand": "echo 'YAPAY SDK Devcontainer created successfully'",
 
   // Use 'postStartCommand' to run commands after the container starts
-  "postStartCommand": "cd /workspace/sdk && make install-deps",
+  "postStartCommand": "echo 'YAPAY SDK Devcontainer ready for development' && echo 'Terminal: $TERM' && echo 'Go version:' && go version",
 
   // Configure tool-specific properties
-  "remoteUser": "dev",
-
-  // Set environment variables
+  "remoteUser": "root",
+  
+  // Set environment variables for proper terminal support
   "containerEnv": {
-    "GO111MODULE": "on",
-    "GOPROXY": "https://proxy.golang.org,direct",
-    "GOSUMDB": "sum.golang.org",
-    "CGO_ENABLED": "1",
-    "GOOS": "linux",
-    "GOARCH": "amd64",
-    "LOG_LEVEL": "debug",
-    "GIN_MODE": "debug",
-    "AIR_WORKSPACE": "/workspace/sdk",
-    "AIR_TMP_DIR": "/tmp"
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor"
   },
-
-  // Use 'runArgs' to configure Docker
-  "runArgs": [
-    "--init"
-  ],
-
-  // Use 'shutdownAction' to configure what happens when the container shuts down
-  "shutdownAction": "stopContainer",
 
   // Use 'updateContentCommand' to run commands after the container is updated
-  "updateContentCommand": "cd /workspace/sdk && go mod tidy",
-
-  // Use 'remoteEnv' to set environment variables that will be available in the container
-  "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/go/bin"
-  },
-
-  // Features to add to the dev container
-  "features": {
-    "ghcr.io/devcontainers/features/git:1": {}
-  }
+  "updateContentCommand": "echo 'YAPAY SDK Devcontainer updated successfully'"
 }

@@ -1,0 +1,53 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/api/v3/payments",
+    "headers": {
+      "Authorization": {
+        "matches": "Bearer .*"
+      },
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    },
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.amount"
+      },
+      {
+        "matchesJsonPath": "$.description"
+      }
+    ]
+  },
+  "response": {
+    "status": 201,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": "{{randomValue length=36 type='ALPHANUMERIC'}}",
+      "status": "pending",
+      "paid": false,
+      "amount": {
+        "value": "{{jsonPath request.body '$.amount'}}",
+        "currency": "RUB"
+      },
+      "confirmation": {
+        "type": "redirect",
+        "confirmation_url": "https://money.yandex.ru/payments/external/confirmation?orderId={{randomValue length=36 type='ALPHANUMERIC'}}"
+      },
+      "created_at": "{{now format='yyyy-MM-ddTHH:mm:ss.SSSZ'}}",
+      "description": "{{jsonPath request.body '$.description'}}",
+      "metadata": {
+        "order_id": "{{jsonPath request.body '$.metadata.order_id'}}",
+        "customer_email": "{{jsonPath request.body '$.metadata.customer_email'}}"
+      },
+      "recipient": {
+        "account_id": "{{randomValue length=10 type='NUMERIC'}}",
+        "gateway_id": "{{randomValue length=10 type='NUMERIC'}}"
+      },
+      "refundable": true,
+      "test": true
+    }
+  }
+}
