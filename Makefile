@@ -60,84 +60,94 @@ help:
 	@printf "  make dev-run                  # Start development container\n"
 	@printf "  make dev-shell                # Open shell in container\n"
 
-# Smart plugin build - detects environment and uses devcontainer if needed
+# Smart plugin build - ALWAYS uses the official builder for consistency
 plugins:
-	@printf "$(GREEN)Building plugins (smart environment detection)...$(NC)\n"
-	@if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then \
-		printf "$(YELLOW)Running in Alpine devcontainer - building plugins directly$(NC)\n"; \
-		$(MAKE) build-plugins-alpine; \
-	elif [ -f /.dockerenv ]; then \
-		printf "$(YELLOW)Running in Docker container but not Alpine - using devcontainer$(NC)\n"; \
-		$(MAKE) build-plugins-via-devcontainer; \
-	else \
-		printf "$(YELLOW)Running on host - using devcontainer for Alpine compatibility$(NC)\n"; \
-		$(MAKE) build-plugins-via-devcontainer; \
+	@printf "$(GREEN)Building plugins using official builder image...$(NC)\n"
+	@if ! command -v docker >/dev/null 2>&1; then \
+		printf "$(RED)Error: Docker CLI is not available. Please install Docker or run this from an environment where 'docker' command is present.$(NC)\n"; \
+		exit 1; \
 	fi
-
-# Build plugins directly in Alpine environment (when already in devcontainer)
-build-plugins-alpine:
-	@printf "$(GREEN)Building plugins in Alpine environment...$(NC)\n"
-	@for plugin in src/*/; do \
-		if [ -f "$$plugin/Makefile" ]; then \
-			plugin_name=$$(basename "$$plugin"); \
-			printf "$(YELLOW)Building plugin: $$plugin_name$(NC)\n"; \
-			(cd "$$plugin" && GOPATH="" GOCACHE="" CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
-		fi; \
-	done
-	@printf "$(GREEN)All plugins built successfully in Alpine environment!$(NC)\n"
-
-# Build plugins via devcontainer (when not in Alpine environment)
-build-plugins-via-devcontainer:
-	@printf "$(GREEN)Building plugins using official builder image for compatibility...$(NC)\n"
 	@if ! docker image inspect $(DOCKER_IMAGE):builder >/dev/null 2>&1; then \
 		printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
 		docker pull $(DOCKER_IMAGE):builder; \
 	fi
-	@printf "$(YELLOW)Building plugins inside the builder container...$(NC)\n"
-	@docker run --rm -v $(PWD):/workspace -w /workspace $(DOCKER_IMAGE):builder make build-plugins-alpine
-	@printf "$(GREEN)Plugins built successfully using the official builder!$(NC)\n"
+	@printf "$(YELLOW)Compiling all plugins inside the builder container...$(NC)\n"
+	@docker run --rm \
+		-v $(HOST_PROJECT_PATH):/workspace \
+		-w /workspace \
+		$(DOCKER_IMAGE):builder \
+		make build-plugins-alpine
+	@printf "$(GREEN)All plugins built successfully!$(NC)\n"
 
-# Build individual plugin (smart environment detection)
+# Build plugins directly in Alpine environment (intended to be run INSIDE the builder)
+# This logic is copied from the main yapay project for 100% compatibility.
+build-plugins-alpine:
+	@printf "$(BLUE)--- Running inside builder: Building all plugins ---$(NC)\n"
+	@mkdir -p plugins
+	@for plugin_dir in src/*; do \
+		if [ -d "$$plugin_dir" ]; then \
+			plugin_name=$$(basename "$$plugin_dir"); \
+			printf "$(YELLOW)Building plugin: $$plugin_name$(NC)\n"; \
+			mkdir -p plugins/$$plugin_name; \
+			(cd "$$plugin_dir" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+				-mod=mod \
+				-buildmode=plugin \
+				-buildvcs=false \
+				-ldflags='-w -s' \
+				-o $$plugin_name.so \
+				.); \
+			cp "$$plugin_dir/$$plugin_name.so" plugins/$$plugin_name/; \
+			if [ -f "$$plugin_dir/config.yaml" ]; then \
+				cp $$plugin_dir/config.yaml plugins/$$plugin_name/; \
+			fi; \
+			printf "$(GREEN)Plugin $$plugin_name built successfully!$(NC)\n"; \
+		fi; \
+	done
+	@printf "$(GREEN)All plugins built successfully in Alpine environment!$(NC)\n"
+
+# Build individual plugin - ALWAYS uses the official builder
 plugin-%:
 	@plugin_name=$*; \
-	printf "$(GREEN)Building plugin: $$plugin_name (smart environment detection)...$(NC)\n"; \
-	if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then \
-		printf "$(YELLOW)Running in Alpine devcontainer - building plugin directly$(NC)\n"; \
-		$(MAKE) build-plugin-alpine-$$plugin_name; \
-	elif [ -f /.dockerenv ]; then \
-		printf "$(YELLOW)Running in Docker container but not Alpine - using devcontainer$(NC)\n"; \
-		$(MAKE) build-plugin-via-devcontainer-$$plugin_name; \
-	else \
-		printf "$(YELLOW)Running on host - using devcontainer for Alpine compatibility$(NC)\n"; \
-		$(MAKE) build-plugin-via-devcontainer-$$plugin_name; \
-	fi
-
-# Build individual plugin directly in Alpine environment
-build-plugin-alpine-%:
-	@plugin_name=$*; \
-	printf "$(GREEN)Building plugin: $$plugin_name in Alpine environment...$(NC)\n"; \
-	if [ -f "src/$$plugin_name/Makefile" ]; then \
-		(cd "src/$$plugin_name" && GOPATH="" GOCACHE="" CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
-		printf "$(GREEN)Plugin $$plugin_name built successfully in Alpine environment!$(NC)\n"; \
-	elif [ -f "examples/$$plugin_name/Makefile" ]; then \
-		(cd "examples/$$plugin_name" && GOPATH="" GOCACHE="" CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
-		printf "$(GREEN)Plugin $$plugin_name built successfully in Alpine environment!$(NC)\n"; \
-	else \
-		printf "$(RED)Error: Plugin $$plugin_name not found in src/ or examples/$(NC)\n"; \
+	printf "$(GREEN)Building plugin: $$plugin_name using official builder image...$(NC)\n"; \
+	@if ! command -v docker >/dev/null 2>&1; then \
+		printf "$(RED)Error: Docker CLI is not available.$(NC)\n"; \
 		exit 1; \
 	fi
-
-# Build individual plugin via devcontainer
-build-plugin-via-devcontainer-%:
-	@plugin_name=$*; \
-	printf "$(GREEN)Building plugin: $$plugin_name using official builder image...$(NC)\n"; \
-	if ! docker image inspect $(DOCKER_IMAGE):builder >/dev/null 2>&1; then \
+	@if ! docker image inspect $(DOCKER_IMAGE):builder >/dev/null 2>&1; then \
 		printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
 		docker pull $(DOCKER_IMAGE):builder; \
-	fi; \
-	printf "$(YELLOW)Building plugin $$plugin_name in builder container...$(NC)\n"; \
-	@docker run --rm -v $(PWD):/workspace -w /workspace $(DOCKER_IMAGE):builder make build-plugin-alpine-$$plugin_name; \
-	printf "$(GREEN)Plugin $$plugin_name built successfully using the official builder!$(NC)\n"
+	fi
+	@printf "$(YELLOW)Compiling plugin $$plugin_name inside the builder container...$(NC)\n"; \
+	@docker run --rm \
+		-v $(HOST_PROJECT_PATH):/workspace \
+		-w /workspace \
+		$(DOCKER_IMAGE):builder \
+		make build-plugin-alpine-$$plugin_name
+	@printf "$(GREEN)Plugin $$plugin_name built successfully!$(NC)\n"
+
+# Build individual plugin directly in Alpine environment (intended to be run INSIDE the builder)
+# This logic is copied from the main yapay project for 100% compatibility.
+build-plugin-alpine-%:
+	@plugin_name=$*; \
+	@printf "$(BLUE)--- Running inside builder: Building plugin $$plugin_name ---$(NC)\n"; \
+	@if [ -d "src/$$plugin_name" ]; then \
+		mkdir -p plugins/$$plugin_name; \
+		(cd "src/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+			-mod=mod \
+			-buildmode=plugin \
+			-buildvcs=false \
+			-ldflags='-w -s' \
+			-o $$plugin_name.so \
+			.); \
+		cp "src/$$plugin_name/$$plugin_name.so" plugins/$$plugin_name/; \
+		if [ -f "src/$$plugin_name/config.yaml" ]; then \
+			cp "src/$$plugin_name/config.yaml" "plugins/$$plugin_name/"; \
+		fi; \
+		printf "$(GREEN)Plugin $$plugin_name built successfully in Alpine environment!$(NC)\n"; \
+	else \
+		printf "$(RED)Error: Plugin $$plugin_name not found in src/$(NC)\n"; \
+		exit 1; \
+	fi
 
 # Legacy command for backward compatibility
 build: plugins

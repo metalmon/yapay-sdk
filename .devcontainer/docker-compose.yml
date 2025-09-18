@@ -6,9 +6,13 @@ services:
       dockerfile: .devcontainer/Dockerfile.dev
     volumes:
       - ..:/workspace/sdk:cached
+      # Mount the Docker socket to allow running Docker commands from within the container (Docker-out-of-Docker)
+      - /var/run/docker.sock:/var/run/docker.sock
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
     environment:
+      # Pass the host project path to the container, so it can be used for Docker-out-of-Docker volume mounts.
+      - HOST_PROJECT_PATH=${PWD}
       - GO111MODULE=on
       - GOPROXY=https://proxy.golang.org,direct
       - GOSUMDB=sum.golang.org
