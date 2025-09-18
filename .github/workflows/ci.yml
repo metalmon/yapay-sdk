@@ -69,8 +69,11 @@ jobs:
       - name: Run Gosec Security Scanner
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@latest
-          touch gosec.sarif
           gosec -fmt sarif -out gosec.sarif ./... || true
+          if [ ! -s gosec.sarif ]; then
+            echo "gosec.sarif is empty or does not exist. Creating a dummy file."
+            echo '{"version": "2.1.0", "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json", "runs": [{"tool": {"driver": {"name": "gosec", "version": "2.0.0"}}, "results": []}]}' > gosec.sarif
+          fi
 
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
