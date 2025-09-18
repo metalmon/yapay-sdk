@@ -60,7 +60,7 @@ COPY . /workspace/sdk/
 
 # Download dependencies
 WORKDIR /workspace/sdk
-RUN go mod download
+RUN GOPATH="" GOCACHE="" go mod download
 
 # Set up bash completion
 RUN echo 'source /usr/share/bash-completion/bash_completion' >> /root/.bashrc && \

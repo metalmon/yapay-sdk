@@ -78,7 +78,7 @@ build-plugins-alpine:
 		if [ -f "$$plugin/Makefile" ]; then \
 			plugin_name=$$(basename "$$plugin"); \
 			printf "$(YELLOW)Building plugin: $$plugin_name$(NC)\n"; \
-			(cd "$$plugin" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+			(cd "$$plugin" && GOPATH="" GOCACHE="" CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
 		fi; \
 	done
 	@printf "$(GREEN)All plugins built successfully in Alpine environment!$(NC)\n"
@@ -119,10 +119,10 @@ build-plugin-alpine-%:
 	@plugin_name=$*; \
 	printf "$(GREEN)Building plugin: $$plugin_name in Alpine environment...$(NC)\n"; \
 	if [ -f "src/$$plugin_name/Makefile" ]; then \
-		(cd "src/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+		(cd "src/$$plugin_name" && GOPATH="" GOCACHE="" CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
 		printf "$(GREEN)Plugin $$plugin_name built successfully in Alpine environment!$(NC)\n"; \
 	elif [ -f "examples/$$plugin_name/Makefile" ]; then \
-		(cd "examples/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+		(cd "examples/$$plugin_name" && GOPATH="" GOCACHE="" CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
 		printf "$(GREEN)Plugin $$plugin_name built successfully in Alpine environment!$(NC)\n"; \
 	else \
 		printf "$(RED)Error: Plugin $$plugin_name not found in src/ or examples/$(NC)\n"; \
@@ -200,12 +200,12 @@ lint:
 sdk-build:
 	@printf "$(GREEN)Building SDK...$(NC)\n"
 	@go mod tidy
-	@go build ./...
+	@GOPATH="" GOCACHE="" go build ./...
 
 # Test SDK
 sdk-test:
 	@printf "$(GREEN)Testing SDK...$(NC)\n"
-	@go test ./...
+	@GOPATH="" GOCACHE="" go test ./...
 
 # Build development tools
 tools-build:
@@ -240,8 +240,8 @@ check-all:
 # Update SDK dependencies
 update-sdk-deps:
 	@printf "$(GREEN)Updating SDK dependencies...$(NC)\n"
-	@go get -u ./...
-	@go mod tidy
+	@GOPATH="" GOCACHE="" go get -u ./...
+	@GOPATH="" GOCACHE="" go mod tidy
 
 # Development Container Commands
 
@@ -297,7 +297,7 @@ dev-clean:
 # Setup development environment
 dev-setup: dev-run
 	@echo "Setting up development environment..."
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && go mod download && go mod verify"
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && GOPATH=\"\" GOCACHE=\"\" go mod download && GOPATH=\"\" GOCACHE=\"\" go mod verify"
 	@echo "Development environment setup completed!"
 
 # Run tests in development container
