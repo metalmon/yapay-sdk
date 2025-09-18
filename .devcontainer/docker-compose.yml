@@ -4,6 +4,9 @@ services:
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile.dev
+      args:
+        GOPROXY: "https://proxy.golang.org,direct"
+        GOSUMDB: "sum.golang.org"
     volumes:
       - ..:/workspace/sdk:cached
       # Mount the Docker socket to allow running Docker commands from within the container (Docker-out-of-Docker)

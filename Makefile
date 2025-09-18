@@ -1,7 +1,14 @@
-.PHONY: help build examples all test clean install-deps lint dev-build dev-run dev-stop dev-shell dev-logs dev-status dev-clean dev-setup dev-test dev-debug dev-plugins dev-server dev-tunnel dev-tunnel-start dev-tunnel-stop dev-tunnel-status dev-tunnel-url plugins plugin-% build-plugins-alpine build-plugins-via-devcontainer build-plugin-alpine-% build-plugin-via-devcontainer-%
+# YAPAY SDK Makefile
+# Provides consistent plugin building using the same builder image as the main yapay project
+
+.PHONY: help build-plugins build-plugin-% build-examples clean check-compatibility test test-plugins test-tools build-tools tunnel tunnel-start tunnel-stop tunnel-status tunnel-url debug-plugin debug-plugin-% tools build-plugin-debug
 
 # Configuration
+PLUGINS_DIR := examples
+OUTPUT_DIR := plugins
+TOOLS_DIR := tools
 DOCKER_IMAGE := metalmon/yapay
+BUILDER_TAG := builder
 
 # Colors
 GREEN := \033[0;32m
@@ -11,396 +18,428 @@ BLUE := \033[0;34m
 NC := \033[0m # No Color
 
 # Default target
+.DEFAULT_GOAL := help
+
+# Show help
 help:
-	@printf "$(GREEN)Yapay Plugin Development Kit$(NC)\n"
-	@printf "\n"
-	@printf "$(YELLOW)Available targets:$(NC)\n"
-	@printf "  help         - Show this help message\n"
-	@printf "  plugins      - Build all plugins (smart environment detection)\n"
-	@printf "  plugin-NAME  - Build specific plugin (smart environment detection)\n"
-	@printf "  build        - Build all plugins from src/ (legacy)\n"
-	@printf "  examples     - Build all examples\n"
-	@printf "  all          - Build everything\n"
-	@printf "  test         - Run tests for all plugins and examples\n"
-	@printf "  clean        - Clean build artifacts\n"
-	@printf "  install-deps - Install development dependencies\n"
-	@printf "  lint         - Run linter on all code\n"
-	@printf "  sdk-build    - Build SDK\n"
-	@printf "  sdk-test     - Test SDK\n"
-	@printf "  tools-build  - Build development tools\n"
-	@printf "\n"
-	@printf "$(YELLOW)Development Container Commands:$(NC)\n"
-	@printf "  dev-build       - Build development container\n"
-	@printf "  docker-build-dev - Build devcontainer image for plugin compilation\n"
-	@printf "  dev-run         - Run development container\n"
-	@printf "  dev-stop        - Stop development container\n"
-	@printf "  dev-shell       - Open shell in development container\n"
-	@printf "  dev-logs        - Show development container logs\n"
-	@printf "  dev-status      - Show development container status\n"
-	@printf "  dev-clean       - Clean development container and volumes\n"
-	@printf "  dev-setup       - Setup development environment\n"
-	@printf "  dev-test        - Run tests in development container\n"
-	@printf "  dev-debug       - Start debug session in container\n"
-	@printf "  dev-plugins     - Build and test plugins in container\n"
-	@printf "  dev-server      - Start Yapay server for integration testing\n"
-	@printf "  dev-tunnel      - Start CloudPub tunnel for webhook testing\n"
-	@printf "  dev-tunnel-start  - Start CloudPub tunnel\n"
-	@printf "  dev-tunnel-stop   - Stop CloudPub tunnel\n"
-	@printf "  dev-tunnel-status - Show tunnel status\n"
-	@printf "  dev-tunnel-url    - Get tunnel URL\n"
-	@printf "\n"
-	@printf "$(YELLOW)Examples:$(NC)\n"
-	@printf "  make plugins                  # Build all plugins (smart detection)\n"
-	@printf "  make plugin-my-plugin         # Build specific plugin (smart detection)\n"
-	@printf "  make examples                 # Build all examples\n"
-	@printf "  make all                      # Build everything\n"
-	@printf "  make test                     # Test all plugins and examples\n"
-	@printf "  make -C src/my-plugin build   # Build specific plugin (legacy)\n"
-	@printf "  make -C examples/simple-plugin build  # Build example plugin\n"
-	@printf "  make dev-run                  # Start development container\n"
-	@printf "  make dev-shell                # Open shell in container\n"
+	@echo "$(GREEN)YAPAY SDK Development Tools$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Plugin management:$(NC)"
+	@echo "  new-plugin-NAME      - Create new plugin from template"
+	@echo "  build-plugins        - Build all plugins from src/ directory"
+	@echo "  build-examples       - Build all example plugins (for testing/demo)"
+	@echo "  build-plugin-NAME    - Build specific plugin (auto-detects environment)"
+	@echo "  check-compatibility  - Check development environment compatibility"
+	@echo ""
+	@echo "$(YELLOW)Testing:$(NC)"
+	@echo "  test                 - Run all tests (plugins + tools)"
+	@echo "  test-plugins         - Test all plugins"
+	@echo "  test-tools           - Test all tools"
+	@echo ""
+	@echo "$(YELLOW)Tools:$(NC)"
+	@echo "  build-tools          - Build all development tools"
+	@echo "  build-plugin-debug   - Build plugin debug tool"
+	@echo "  debug-plugin-NAME    - Debug specific plugin"
+	@echo ""
+	@echo "$(YELLOW)CloudPub tunnel (webhook testing):$(NC)"
+	@echo "  tunnel               - Start CloudPub tunnel"
+	@echo "  tunnel-start         - Start CloudPub tunnel"
+	@echo "  tunnel-stop          - Stop CloudPub tunnel"
+	@echo "  tunnel-status        - Show tunnel status"
+	@echo "  tunnel-url           - Get tunnel URL"
+	@echo ""
+	@echo "$(YELLOW)Utilities:$(NC)"
+	@echo "  clean                - Clean build artifacts"
+	@echo "  tools                - Alias for build-tools"
+	@echo ""
+	@echo "$(BLUE)Examples:$(NC)"
+	@echo "  make new-plugin-my-plugin"
+	@echo "  make build-plugin-my-plugin"
+	@echo "  make test"
+	@echo "  make debug-plugin-my-plugin"
+	@echo "  make tunnel-start"
 
-# Smart plugin build - ALWAYS uses the official builder for consistency
-plugins:
-	@printf "$(GREEN)Building plugins using official builder image...$(NC)\n"
-	@if ! command -v docker >/dev/null 2>&1; then \
-		printf "$(RED)Error: Docker CLI is not available. Please install Docker or run this from an environment where 'docker' command is present.$(NC)\n"; \
-		exit 1; \
-	fi
-	@if ! docker image inspect $(DOCKER_IMAGE):builder >/dev/null 2>&1; then \
-		printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
-		docker pull $(DOCKER_IMAGE):builder; \
-	fi
-	@printf "$(YELLOW)Compiling all plugins inside the builder container...$(NC)\n"
-	@docker run --rm \
-		-v $(HOST_PROJECT_PATH):/workspace \
-		-w /workspace \
-		$(DOCKER_IMAGE):builder \
-		make build-plugins-alpine
-	@printf "$(GREEN)All plugins built successfully!$(NC)\n"
-
-# Build plugins directly in Alpine environment (intended to be run INSIDE the builder)
-# This logic is copied from the main yapay project for 100% compatibility.
-build-plugins-alpine:
-	@printf "$(BLUE)--- Running inside builder: Building all plugins ---$(NC)\n"
-	@mkdir -p plugins
-	@for plugin_dir in src/*; do \
-		if [ -d "$$plugin_dir" ]; then \
+# Build all plugins from src/ directory only
+build-plugins:
+	@printf "$(BLUE)--- Building all plugins from src/ (smart environment detection) ---$(NC)\n"
+	@mkdir -p $(OUTPUT_DIR)
+	@if [ ! -d "src" ]; then \
+		printf "$(YELLOW)No src/ directory found. Creating it...$(NC)\n"; \
+		mkdir -p src; \
+	fi; \
+	for plugin_dir in src/*; do \
+		if [ -d "$$plugin_dir" ] && [ -f "$$plugin_dir/go.mod" ]; then \
 			plugin_name=$$(basename "$$plugin_dir"); \
 			printf "$(YELLOW)Building plugin: $$plugin_name$(NC)\n"; \
-			mkdir -p plugins/$$plugin_name; \
-			(cd "$$plugin_dir" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-				-mod=mod \
-				-buildmode=plugin \
-				-buildvcs=false \
-				-ldflags='-w -s' \
-				-o $$plugin_name.so \
-				.); \
-			cp "$$plugin_dir/$$plugin_name.so" plugins/$$plugin_name/; \
-			if [ -f "$$plugin_dir/config.yaml" ]; then \
-				cp $$plugin_dir/config.yaml plugins/$$plugin_name/; \
-			fi; \
-			printf "$(GREEN)Plugin $$plugin_name built successfully!$(NC)\n"; \
+			mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+			rm -f "$$plugin_dir/$$plugin_name.so"; \
+			$(MAKE) build-plugin-$$plugin_name; \
+			printf "$(GREEN)Plugin $$plugin_name copied to output directory$(NC)\n"; \
+		fi; \
+	done; \
+	if [ ! -d "src" ] || [ -z "$$(ls -A src 2>/dev/null)" ]; then \
+		printf "$(YELLOW)No plugins found in src/. Examples are in examples/ directory.$(NC)\n"; \
+		printf "$(YELLOW)To build examples, copy them to src/ first:$(NC)\n"; \
+		printf "$(YELLOW)  cp -r examples/simple-plugin src/my-plugin$(NC)\n"; \
+	fi
+	@printf "$(GREEN)All plugins from src/ built successfully!$(NC)\n"
+
+# Build all example plugins (for testing/demo purposes)
+build-examples:
+	@printf "$(BLUE)--- Building all example plugins (for testing/demo) ---$(NC)\n"
+	@mkdir -p $(OUTPUT_DIR)
+	@for plugin_dir in $(PLUGINS_DIR)/*; do \
+		if [ -d "$$plugin_dir" ] && [ -f "$$plugin_dir/go.mod" ]; then \
+			plugin_name=$$(basename "$$plugin_dir"); \
+			printf "$(YELLOW)Building example plugin: $$plugin_name$(NC)\n"; \
+			mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+			rm -f "$$plugin_dir/$$plugin_name.so"; \
+			$(MAKE) build-plugin-examples-$$plugin_name; \
+			printf "$(GREEN)Example plugin $$plugin_name copied to output directory$(NC)\n"; \
 		fi; \
 	done
-	@printf "$(GREEN)All plugins built successfully in Alpine environment!$(NC)\n"
+	@printf "$(GREEN)All example plugins built successfully!$(NC)\n"
 
-# Build individual plugin - ALWAYS uses the official builder
-plugin-%:
+# Build individual plugin using smart environment detection
+build-plugin-%:
 	@plugin_name=$*; \
-	printf "$(GREEN)Building plugin: $$plugin_name using official builder image...$(NC)\n"; \
-	@if ! command -v docker >/dev/null 2>&1; then \
-		printf "$(RED)Error: Docker CLI is not available.$(NC)\n"; \
+	printf "$(GREEN)Building plugin: $$plugin_name (smart environment detection)...$(NC)\n"; \
+	if [ -d "src/$$plugin_name" ]; then \
+		printf "$(YELLOW)Found plugin in src/ directory$(NC)\n"; \
+		$(MAKE) build-plugin-src-$$plugin_name; \
+	elif [ -d "$(PLUGINS_DIR)/$$plugin_name" ]; then \
+		printf "$(YELLOW)Found plugin in examples/ directory (deprecated - copy to src/ first)$(NC)\n"; \
+		printf "$(YELLOW)To use examples, copy them to src/: cp -r examples/$$plugin_name src/$$plugin_name$(NC)\n"; \
+		$(MAKE) build-plugin-examples-$$plugin_name; \
+	else \
+		printf "$(RED)Error: Plugin $$plugin_name not found in src/ or examples/$(NC)\n"; \
+		printf "$(YELLOW)Available examples:$(NC)\n"; \
+		ls -1 examples/ 2>/dev/null | sed 's/^/  /' || printf "$(YELLOW)  (no examples found)$(NC)\n"; \
+		printf "$(YELLOW)Copy an example to src/: cp -r examples/simple-plugin src/my-plugin$(NC)\n"; \
 		exit 1; \
 	fi
-	@if ! docker image inspect $(DOCKER_IMAGE):builder >/dev/null 2>&1; then \
-		printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
-		docker pull $(DOCKER_IMAGE):builder; \
-	fi
-	@printf "$(YELLOW)Compiling plugin $$plugin_name inside the builder container...$(NC)\n"; \
-	@docker run --rm \
-		-v $(HOST_PROJECT_PATH):/workspace \
-		-w /workspace \
-		$(DOCKER_IMAGE):builder \
-		make build-plugin-alpine-$$plugin_name
-	@printf "$(GREEN)Plugin $$plugin_name built successfully!$(NC)\n"
 
-# Build individual plugin directly in Alpine environment (intended to be run INSIDE the builder)
-# This logic is copied from the main yapay project for 100% compatibility.
-build-plugin-alpine-%:
+# Build plugin from src/ directory
+build-plugin-src-%:
 	@plugin_name=$*; \
-	@printf "$(BLUE)--- Running inside builder: Building plugin $$plugin_name ---$(NC)\n"; \
-	@if [ -d "src/$$plugin_name" ]; then \
-		mkdir -p plugins/$$plugin_name; \
-		(cd "src/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+	printf "$(GREEN)Building plugin from src/: $$plugin_name$(NC)\n"; \
+	if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then \
+		printf "$(YELLOW)Running in Alpine devcontainer - building plugin directly$(NC)\n"; \
+		(cd "src/$$plugin_name" && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
 			-mod=mod \
 			-buildmode=plugin \
 			-buildvcs=false \
-			-ldflags='-w -s' \
+			-ldflags="-w -s" \
 			-o $$plugin_name.so \
 			.); \
-		cp "src/$$plugin_name/$$plugin_name.so" plugins/$$plugin_name/; \
-		if [ -f "src/$$plugin_name/config.yaml" ]; then \
-			cp "src/$$plugin_name/config.yaml" "plugins/$$plugin_name/"; \
-		fi; \
-		printf "$(GREEN)Plugin $$plugin_name built successfully in Alpine environment!$(NC)\n"; \
+		mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+		cp "src/$$plugin_name/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
 	else \
-		printf "$(RED)Error: Plugin $$plugin_name not found in src/$(NC)\n"; \
+		printf "$(YELLOW)Using builder image for compatibility$(NC)\n"; \
+		if ! docker image inspect $(DOCKER_IMAGE):$(BUILDER_TAG) >/dev/null 2>&1; then \
+			printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
+			docker pull $(DOCKER_IMAGE):$(BUILDER_TAG) || \
+			(printf "$(RED)Failed to pull builder image. Please ensure it's available:$(NC)\n"; \
+			 printf "$(YELLOW)  docker pull $(DOCKER_IMAGE):$(BUILDER_TAG)$(NC)\n"; \
+			 printf "$(YELLOW)  or build it locally: cd ../yapay && make build-builder$(NC)\n"; \
+			 exit 1); \
+		fi; \
+		docker run --rm \
+			-v $(PWD):/workspace \
+			-w /workspace/src/$$plugin_name \
+			$(DOCKER_IMAGE):$(BUILDER_TAG) \
+			sh -c 'CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+				-mod=mod \
+				-buildmode=plugin \
+				-buildvcs=false \
+				-ldflags="-w -s" \
+				-o '$$plugin_name.so' \
+				.'; \
+		mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+		cp "src/$$plugin_name/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
+		if [ -f "src/$$plugin_name/config.yaml" ]; then \
+			cp "src/$$plugin_name/config.yaml" $(OUTPUT_DIR)/$$plugin_name/; \
+		fi; \
+	fi; \
+	printf "$(GREEN)Plugin $$plugin_name built successfully from src/!$(NC)\n"
+
+# Build plugin from examples/ directory
+build-plugin-examples-%:
+	@plugin_name=$*; \
+	printf "$(GREEN)Building plugin from examples/: $$plugin_name$(NC)\n"; \
+	if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then \
+		printf "$(YELLOW)Running in Alpine devcontainer - building plugin directly$(NC)\n"; \
+		(cd "$(PLUGINS_DIR)/$$plugin_name" && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+			-mod=mod \
+			-buildmode=plugin \
+			-buildvcs=false \
+			-ldflags="-w -s" \
+			-o $$plugin_name.so \
+			.); \
+		mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+		cp "$(PLUGINS_DIR)/$$plugin_name/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
+	else \
+		printf "$(YELLOW)Using builder image for compatibility$(NC)\n"; \
+		if ! docker image inspect $(DOCKER_IMAGE):$(BUILDER_TAG) >/dev/null 2>&1; then \
+			printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
+			docker pull $(DOCKER_IMAGE):$(BUILDER_TAG) || \
+			(printf "$(RED)Failed to pull builder image. Please ensure it's available:$(NC)\n"; \
+			 printf "$(YELLOW)  docker pull $(DOCKER_IMAGE):$(BUILDER_TAG)$(NC)\n"; \
+			 printf "$(YELLOW)  or build it locally: cd ../yapay && make build-builder$(NC)\n"; \
+			 exit 1); \
+		fi; \
+		docker run --rm \
+			-v $(PWD):/workspace \
+			-w /workspace/$(PLUGINS_DIR)/$$plugin_name \
+			$(DOCKER_IMAGE):$(BUILDER_TAG) \
+			sh -c 'CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+				-mod=mod \
+				-buildmode=plugin \
+				-buildvcs=false \
+				-ldflags="-w -s" \
+				-o '$$plugin_name.so' \
+				.'; \
+		mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+		cp "$(PLUGINS_DIR)/$$plugin_name/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
+		if [ -f "$(PLUGINS_DIR)/$$plugin_name/config.yaml" ]; then \
+			cp "$(PLUGINS_DIR)/$$plugin_name/config.yaml" $(OUTPUT_DIR)/$$plugin_name/; \
+		fi; \
+	fi; \
+	printf "$(GREEN)Plugin $$plugin_name built successfully from examples/!$(NC)\n"
+
+# Build plugin directly in Alpine environment (when already in Alpine container)
+build-plugin-alpine-%:
+	@plugin_name=$*; \
+	plugin_dir=$${PLUGIN_DIR:-$(PLUGINS_DIR)/$$plugin_name}; \
+	printf "$(GREEN)Building plugin: $$plugin_name in Alpine environment...$(NC)\n"; \
+	if [ ! -d "$$plugin_dir" ]; then \
+		printf "$(RED)Error: Plugin directory $$plugin_dir not found.$(NC)\n"; \
 		exit 1; \
-	fi
+	fi; \
+	(cd "$$plugin_dir" && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+		-mod=mod \
+		-buildmode=plugin \
+		-buildvcs=false \
+		-ldflags="-w -s" \
+		-o $$plugin_name.so \
+		.); \
+	mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+	cp "$$plugin_dir/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
+	printf "$(GREEN)Plugin $$plugin_name built successfully in Alpine environment!$(NC)\n"
 
-# Legacy command for backward compatibility
-build: plugins
+# Build plugin via builder image (when not in Alpine or on host)
+build-plugin-via-builder-%:
+	@plugin_name=$*; \
+	plugin_dir=$${PLUGIN_DIR:-$(PLUGINS_DIR)/$$plugin_name}; \
+	printf "$(GREEN)Building plugin: $$plugin_name using builder image...$(NC)\n"; \
+	if [ ! -d "$$plugin_dir" ]; then \
+		printf "$(RED)Error: Plugin directory $$plugin_dir not found.$(NC)\n"; \
+		exit 1; \
+	fi; \
+	printf "$(YELLOW)Ensuring builder image is available...$(NC)\n"; \
+	if ! docker image inspect $(DOCKER_IMAGE):$(BUILDER_TAG) >/dev/null 2>&1; then \
+		printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
+		docker pull $(DOCKER_IMAGE):$(BUILDER_TAG) || \
+		(printf "$(RED)Failed to pull builder image. Please ensure it's available:$(NC)\n"; \
+		 printf "$(YELLOW)  docker pull $(DOCKER_IMAGE):$(BUILDER_TAG)$(NC)\n"; \
+		 printf "$(YELLOW)  or build it locally: cd ../yapay && make build-builder$(NC)\n"; \
+		 exit 1); \
+	fi; \
+	printf "$(YELLOW)Building plugin $$plugin_name in builder container...$(NC)\n"; \
+	docker run --rm \
+		-v $(PWD):/workspace \
+		-w /workspace/$$plugin_dir \
+		$(DOCKER_IMAGE):$(BUILDER_TAG) \
+		sh -c 'CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+			-mod=mod \
+			-buildmode=plugin \
+			-buildvcs=false \
+			-ldflags="-w -s" \
+			-o '$$plugin_name.so' \
+			.'; \
+	mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+	cp "$$plugin_dir/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
+	printf "$(GREEN)Plugin $$plugin_name built successfully!$(NC)\n"
 
-# Build all examples
-examples:
-	@printf "$(GREEN)Building all examples...$(NC)\n"
-	@for example in examples/*/; do \
-		if [ -f "$$example/Makefile" ]; then \
-			printf "$(YELLOW)Building $$example...$(NC)\n"; \
-			$(MAKE) -C "$$example" build; \
-		fi; \
-	done
-
-# Build everything (plugins + examples)
-all:
-	@printf "$(GREEN)Building everything...$(NC)\n"
-	@$(MAKE) plugins
-	@$(MAKE) examples
-
-# Test all plugins and examples
-test:
-	@printf "$(GREEN)Testing all plugins and examples...$(NC)\n"
-	@for plugin in src/*/ examples/*/; do \
-		if [ -f "$$plugin/Makefile" ]; then \
-			printf "$(YELLOW)Testing $$plugin...$(NC)\n"; \
-			$(MAKE) -C "$$plugin" test; \
-		fi; \
-	done
-
-# Clean all build artifacts
+# Clean build artifacts
 clean:
-	@printf "$(GREEN)Cleaning build artifacts...$(NC)\n"
-	@for plugin in src/*/ examples/*/; do \
-		if [ -f "$$plugin/Makefile" ]; then \
-			printf "$(YELLOW)Cleaning $$plugin...$(NC)\n"; \
-			$(MAKE) -C "$$plugin" clean; \
+	@printf "$(YELLOW)Cleaning build artifacts...$(NC)\n"
+	rm -rf $(OUTPUT_DIR)
+	@for plugin_dir in $(PLUGINS_DIR)/*; do \
+		if [ -d "$$plugin_dir" ]; then \
+			plugin_name=$$(basename "$$plugin_dir"); \
+			rm -f $$plugin_dir/*.so; \
 		fi; \
 	done
-	@$(MAKE) -C tools/plugin-debug clean
+	@printf "$(GREEN)Clean completed!$(NC)\n"
 
-# Install development dependencies
-install-deps:
-	@printf "$(GREEN)Installing development dependencies...$(NC)\n"
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+# Check environment compatibility
+check-compatibility:
+	@printf "$(GREEN)Checking development environment compatibility...$(NC)\n"
+	@printf "$(YELLOW)Environment detection:$(NC)\n"
+	@if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then \
+		printf "$(GREEN)  ✓ Running in Alpine devcontainer - direct build available$(NC)\n"; \
+		printf "$(YELLOW)  Go version:$(NC)\n"; \
+		go version; \
+	elif [ -f /.dockerenv ]; then \
+		printf "$(YELLOW)  ✓ Running in Docker container - builder image will be used$(NC)\n"; \
+		printf "$(YELLOW)  Checking builder image availability...$(NC)\n"; \
+		if docker image inspect $(DOCKER_IMAGE):$(BUILDER_TAG) >/dev/null 2>&1; then \
+			printf "$(GREEN)  ✓ Builder image found locally$(NC)\n"; \
+		else \
+			printf "$(YELLOW)  ⚠ Builder image will be pulled when needed$(NC)\n"; \
+		fi; \
+	else \
+		printf "$(YELLOW)  ✓ Running on host - builder image will be used$(NC)\n"; \
+		printf "$(YELLOW)  Checking Docker availability...$(NC)\n"; \
+		if command -v docker >/dev/null 2>&1; then \
+			printf "$(GREEN)  ✓ Docker is available$(NC)\n"; \
+			if docker image inspect $(DOCKER_IMAGE):$(BUILDER_TAG) >/dev/null 2>&1; then \
+				printf "$(GREEN)  ✓ Builder image found locally$(NC)\n"; \
+			else \
+				printf "$(YELLOW)  ⚠ Builder image will be pulled when needed$(NC)\n"; \
+			fi; \
+		else \
+			printf "$(RED)  ✗ Docker is not available$(NC)\n"; \
+			printf "$(RED)Please install Docker to use the SDK$(NC)\n"; \
+		exit 1; \
+		fi; \
+	fi
+	@printf "$(GREEN)Environment compatibility check completed!$(NC)\n"
 
-# Run linter on all code
-lint:
-	@printf "$(GREEN)Running linter...$(NC)\n"
-	golangci-lint run ./...
+# Test commands
+test: test-plugins test-tools
+	@printf "$(GREEN)All tests completed!$(NC)\n"
 
-# Build SDK
-sdk-build:
-	@printf "$(GREEN)Building SDK...$(NC)\n"
-	@go mod tidy
-	@GOPATH="" GOCACHE="" go build ./...
+# Test plugins
+test-plugins:
+	@printf "$(GREEN)Testing plugins...$(NC)\n"
+	@for plugin_dir in $(PLUGINS_DIR)/*; do \
+		if [ -d "$$plugin_dir" ] && [ -f "$$plugin_dir/go.mod" ]; then \
+			plugin_name=$$(basename "$$plugin_dir"); \
+			printf "$(YELLOW)Testing plugin: $$plugin_name$(NC)\n"; \
+			(cd "$$plugin_dir" && go test -v ./... || printf "$(RED)Plugin $$plugin_name tests failed$(NC)\n"); \
+		fi; \
+	done
 
-# Test SDK
-sdk-test:
-	@printf "$(GREEN)Testing SDK...$(NC)\n"
-	@GOPATH="" GOCACHE="" go test ./...
+# Test tools
+test-tools:
+	@printf "$(GREEN)Testing tools...$(NC)\n"
+	@for tool_dir in $(TOOLS_DIR)/*; do \
+		if [ -d "$$tool_dir" ] && [ -f "$$tool_dir/go.mod" ]; then \
+			tool_name=$$(basename "$$tool_dir"); \
+			printf "$(YELLOW)Testing tool: $$tool_name$(NC)\n"; \
+			(cd "$$tool_dir" && go test -v ./... || printf "$(RED)Tool $$tool_name tests failed$(NC)\n"); \
+		fi; \
+	done
 
-# Build development tools
-tools-build:
+# Build tools
+build-tools:
 	@printf "$(GREEN)Building development tools...$(NC)\n"
-	@$(MAKE) -C tools/plugin-debug build
+	@for tool_dir in $(TOOLS_DIR)/*; do \
+		if [ -d "$$tool_dir" ] && [ -f "$$tool_dir/go.mod" ]; then \
+			tool_name=$$(basename "$$tool_dir"); \
+			printf "$(YELLOW)Building tool: $$tool_name$(NC)\n"; \
+			$(MAKE) build-tool-$$tool_name; \
+		fi; \
+	done
+	@printf "$(GREEN)All tools built successfully!$(NC)\n"
 
-# Create new plugin from template
-new-plugin:
-	@if [ -z "$(NAME)" ]; then \
-		printf "$(RED)Usage: make new-plugin NAME=my-plugin$(NC)\n"; \
+# Build individual tool
+build-tool-%:
+	@tool_name=$*; \
+	printf "$(GREEN)Building tool: $$tool_name...$(NC)\n"; \
+	if [ ! -d "$(TOOLS_DIR)/$$tool_name" ]; then \
+		printf "$(RED)Error: Tool directory $(TOOLS_DIR)/$$tool_name not found.$(NC)\n"; \
 		exit 1; \
 	fi; \
-	if [ -d "src/$(NAME)" ]; then \
-		printf "$(RED)Error: Plugin '$(NAME)' already exists$(NC)\n"; \
-		exit 1; \
-	fi; \
-	printf "$(GREEN)Creating new plugin: $(NAME)$(NC)\n"; \
-	cp -r examples/simple-plugin src/$(NAME); \
-	cd src/$(NAME) && \
-	sed -i "s/simple-plugin/$(NAME)/g" go.mod && \
-	sed -i "s/Simple Plugin Example/$(NAME)/g" config.yaml && \
-	sed -i "s/simple-plugin/$(NAME)/g" Makefile && \
-	printf "$(GREEN)Plugin '$(NAME)' created in src/$(NAME)/$(NC)\n"
+	(cd "$(TOOLS_DIR)/$$tool_name" && go build -o $$tool_name .); \
+	printf "$(GREEN)Tool $$tool_name built successfully!$(NC)\n"
 
-# Check if all plugins and examples build successfully
-check-all:
-	@printf "$(GREEN)Checking all plugins and examples...$(NC)\n"
-	@$(MAKE) all
-	@$(MAKE) test
-	@printf "$(GREEN)✅ All plugins and examples build and test successfully$(NC)\n"
+# Build plugin debug tool specifically
+build-plugin-debug:
+	@printf "$(GREEN)Building plugin debug tool...$(NC)\n"
+	@$(MAKE) build-tool-plugin-debug
 
-# Update SDK dependencies
-update-sdk-deps:
-	@printf "$(GREEN)Updating SDK dependencies...$(NC)\n"
-	@GOPATH="" GOCACHE="" go get -u ./...
-	@GOPATH="" GOCACHE="" go mod tidy
-
-# Development Container Commands
-
-# Build development container
-dev-build:
-	@printf "$(GREEN)Building development container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml build
-	@printf "$(GREEN)Development container built successfully!$(NC)\n"
-
-# Build devcontainer image for plugin compilation
-docker-build-dev:
-	@printf "$(GREEN)Building devcontainer image...$(NC)\n"
-	docker build -f .devcontainer/Dockerfile.dev -t yapay-sdk:dev .
-	@printf "$(GREEN)Devcontainer image built successfully!$(NC)\n"
-
-# Run development container
-dev-run: dev-build
-	@printf "$(GREEN)Starting development container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml up -d
-	@printf "$(GREEN)Development container started successfully!$(NC)\n"
-	@printf "$(BLUE)SDK Development Server: http://localhost:8080$(NC)\n"
-	@printf "$(BLUE)Debug Port: 2345$(NC)\n"
-	@printf "$(YELLOW)Use 'make dev-shell' to open shell in container$(NC)\n"
-
-# Stop development container
-dev-stop:
-	@printf "$(YELLOW)Stopping development container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml down
-	@printf "$(GREEN)Development container stopped successfully!$(NC)\n"
-
-# Open shell in development container
-dev-shell:
-	@printf "$(GREEN)Opening shell in development container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash
-
-# Show development container logs
-dev-logs:
-	@printf "$(GREEN)Showing development container logs...$(NC)\n"
-	docker compose -f docker-compose.dev.yml logs -f
-
-# Show development container status
-dev-status:
-	@printf "$(GREEN)Development container status:$(NC)\n"
-	docker compose -f docker-compose.dev.yml ps
-
-# Clean development container and volumes
-dev-clean:
-	@printf "$(YELLOW)Cleaning development container and volumes...$(NC)\n"
-	docker compose -f docker-compose.dev.yml down -v
-	docker system prune -f
-	@printf "$(GREEN)Development environment cleaned successfully!$(NC)\n"
-
-# Setup development environment
-dev-setup: dev-run
-	@printf "$(GREEN)Setting up development environment...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && GOPATH=\"\" GOCACHE=\"\" go mod download && GOPATH=\"\" GOCACHE=\"\" go mod verify"
-	@printf "$(GREEN)Development environment setup completed!$(NC)\n"
-
-# Run tests in development container
-dev-test:
-	@printf "$(GREEN)Running tests in development container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make test"
-
-# Start debug session in container
-dev-debug:
-	@printf "$(GREEN)Starting debug session...$(NC)\n"
-	@printf "$(YELLOW)Debug port: 2345$(NC)\n"
-	@printf "$(YELLOW)Use your IDE to connect to localhost:2345$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && dlv debug --headless --listen=:2345 --api-version=2"
-
-# Build and test plugins in container
-dev-plugins:
-	@printf "$(GREEN)Building and testing plugins in development container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make plugins && make test"
-
-# Start Yapay server for integration testing
-dev-server:
-	@printf "$(GREEN)Starting Yapay server for integration testing...$(NC)\n"
-	docker compose -f docker-compose.dev.yml up -d yapay-server-dev
-	@printf "$(BLUE)Yapay server started on http://localhost:8082$(NC)\n"
-	@printf "$(YELLOW)Use 'make dev-plugins' to build plugins for testing$(NC)\n"
-
-# Restart development container
-dev-restart: dev-stop dev-run
-	@printf "$(GREEN)Development container restarted successfully!$(NC)\n"
-
-# Show development container health
-dev-health:
-	@printf "$(GREEN)Checking development container health...$(NC)\n"
-	@curl -s http://localhost:8080/health | jq . || printf "$(RED)Health check failed$(NC)\n"
-
-# Install development dependencies in container
-dev-install-deps:
-	@printf "$(GREEN)Installing development dependencies in container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make install-deps"
-
-# Run linter in development container
-dev-lint:
-	@printf "$(GREEN)Running linter in development container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && make lint"
-
-# Format code in development container
-dev-fmt:
-	@printf "$(GREEN)Formatting code in development container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && go fmt ./..."
-
-# Run security scan in development container
-dev-security:
-	@printf "$(GREEN)Running security scan in development container...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && gosec ./..."
-
-# Run all checks in development container
-dev-check: dev-fmt dev-lint dev-test dev-security
-	@printf "$(GREEN)All checks completed in development container!$(NC)\n"
-
-# Hot reload development (restart container with new code)
-dev-reload: dev-stop dev-run
-	@printf "$(GREEN)Development container reloaded with latest code!$(NC)\n"
-
-# Show development container resource usage
-dev-stats:
-	@printf "$(GREEN)Development container resource usage:$(NC)\n"
-	docker stats yapay-sdk-dev --no-stream
-
-# Export development container logs
-dev-export-logs:
-	@printf "$(GREEN)Exporting development container logs...$(NC)\n"
-	docker compose -f docker-compose.dev.yml logs > dev-logs-$(shell date +%Y%m%d-%H%M%S).log
-	@printf "$(GREEN)Logs exported successfully!$(NC)\n"
-
-# CloudPub Tunnel Commands
-
-# Start CloudPub tunnel for webhook testing
-dev-tunnel: dev-tunnel-start
+# CloudPub tunnel commands (for webhook testing)
+tunnel: tunnel-start
 
 # Start CloudPub tunnel
-dev-tunnel-start:
+tunnel-start:
 	@printf "$(GREEN)Starting CloudPub tunnel for webhook testing...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh start"
+	@if command -v clo >/dev/null 2>&1; then \
+		clo start --background; \
+		printf "$(GREEN)CloudPub tunnel started successfully!$(NC)\n"; \
+	else \
+		printf "$(RED)CloudPub tunnel not available - install it first$(NC)\n"; \
+		printf "$(YELLOW)CloudPub is installed in the devcontainer$(NC)\n"; \
+	fi
 
 # Stop CloudPub tunnel
-dev-tunnel-stop:
+tunnel-stop:
 	@printf "$(YELLOW)Stopping CloudPub tunnel...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh stop"
+	@if command -v clo >/dev/null 2>&1; then \
+		clo stop; \
+		printf "$(GREEN)CloudPub tunnel stopped successfully!$(NC)\n"; \
+	else \
+		printf "$(YELLOW)CloudPub tunnel not available$(NC)\n"; \
+	fi
 
 # Show CloudPub tunnel status
-dev-tunnel-status:
+tunnel-status:
 	@printf "$(GREEN)Checking CloudPub tunnel status...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh status"
+	@if command -v clo >/dev/null 2>&1; then \
+		clo status; \
+	else \
+		printf "$(YELLOW)CloudPub tunnel not available$(NC)\n"; \
+	fi
 
 # Get CloudPub tunnel URL
-dev-tunnel-url:
+tunnel-url:
 	@printf "$(GREEN)Getting CloudPub tunnel URL...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh url"
+	@if command -v clo >/dev/null 2>&1; then \
+		clo url; \
+	else \
+		printf "$(YELLOW)CloudPub tunnel not available$(NC)\n"; \
+	fi
 
-# Restart CloudPub tunnel
-dev-tunnel-restart:
-	@printf "$(GREEN)Restarting CloudPub tunnel...$(NC)\n"
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && ./scripts/cloudpub-tunnel.sh restart"
+# Debug plugin using plugin-debug tool
+debug-plugin-%:
+	@plugin_name=$*; \
+	printf "$(GREEN)Debugging plugin: $$plugin_name$(NC)\n"; \
+	if [ ! -f "$(OUTPUT_DIR)/$$plugin_name/$$plugin_name.so" ]; then \
+		printf "$(YELLOW)Plugin not built, building first...$(NC)\n"; \
+		$(MAKE) build-plugin-$$plugin_name; \
+	fi; \
+	if [ ! -f "$(TOOLS_DIR)/plugin-debug/plugin-debug" ]; then \
+		printf "$(YELLOW)Debug tool not built, building first...$(NC)\n"; \
+		$(MAKE) build-plugin-debug; \
+	fi; \
+	printf "$(YELLOW)Running plugin debug tool...$(NC)\n"; \
+	cd "$(TOOLS_DIR)/plugin-debug" && ./plugin-debug -plugin $$plugin_name -plugins-dir "$(PWD)/$(OUTPUT_DIR)" -test validate
+
+# Create new plugin from template
+new-plugin-%:
+	@plugin_name=$*; \
+	src_dir="src/$$plugin_name"; \
+	if [ -d "$$src_dir" ]; then \
+		printf "$(RED)Error: Plugin $$plugin_name already exists in src/$(NC)\n"; \
+		exit 1; \
+	fi; \
+	printf "$(GREEN)Creating new plugin: $$plugin_name in src/$(NC)\n"; \
+	mkdir -p "$$src_dir"; \
+	cp -r "$(PLUGINS_DIR)/simple-plugin/"* "$$src_dir/"; \
+	sed -i "s/simple-plugin/$$plugin_name/g" "$$src_dir/go.mod"; \
+	sed -i "s/simple-plugin/$$plugin_name/g" "$$src_dir/Makefile"; \
+	sed -i "s/simple-plugin/$$plugin_name/g" "$$src_dir/README.md"; \
+	sed -i "s/SimplePlugin/$$(echo $$plugin_name | sed 's/-\([a-z]\)/\U\1/g' | sed 's/^\([a-z]\)/\U\1/')/g" "$$src_dir/main.go"; \
+	sed -i "s/SimpleGenerator/$$(echo $$plugin_name | sed 's/-\([a-z]\)/\U\1/g' | sed 's/^\([a-z]\)/\U\1/')Generator/g" "$$src_dir/main.go"; \
+	printf "$(GREEN)Plugin $$plugin_name created successfully in src/!$(NC)\n"; \
+	printf "$(YELLOW)Next steps:$(NC)\n"; \
+	printf "$(YELLOW)  1. Edit src/$$plugin_name/main.go$(NC)\n"; \
+	printf "$(YELLOW)  2. Edit src/$$plugin_name/config.yaml$(NC)\n"; \
+	printf "$(YELLOW)  3. Run: make build-plugin-$$plugin_name$(NC)\n"; \
+	printf "$(YELLOW)  4. Add to Git: git add src/$$plugin_name/$(NC)\n"
+
+# Tools command (alias for build-tools)
+tools: build-tools

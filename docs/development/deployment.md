@@ -2,6 +2,8 @@
 
 ## Варианты развертывания
 
+**Важно**: Все плагины должны быть собраны с использованием официального builder-образа для обеспечения совместимости с production сервером.
+
 ### Вариант A: GitHub Actions (Автоматическое развертывание)
 
 Если у вас есть доступ к серверу Yapay, настройте автоматическое развертывание через GitHub Actions.
@@ -39,9 +41,27 @@ jobs:
         with:
           go-version: "1.21"
 
-      - name: Build Plugin
+      - name: Check Builder Image Compatibility
         run: |
-          CGO_ENABLED=1 go build -buildmode=plugin -o my-plugin.so .
+          # Проверяем наличие builder-образа
+          if ! docker image inspect metalmon/yapay:builder >/dev/null 2>&1; then
+            echo "Builder image not found. Please contact administrator."
+            exit 1
+          fi
+
+      - name: Build Plugin with Official Builder
+        run: |
+          # Сборка с официальным builder-образом для совместимости
+          docker run --rm \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            metalmon/yapay:builder \
+            sh -c 'CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+              -mod=mod \
+              -buildmode=plugin \
+              -buildvcs=false \
+              -ldflags="-w -s" \
+              -o my-plugin.so .'
 
       - name: Deploy to Server
         uses: appleboy/ssh-action@v0.1.7
@@ -50,8 +70,8 @@ jobs:
           username: ${{ secrets.YAPAY_SERVER_USER }}
           key: ${{ secrets.YAPAY_SERVER_KEY }}
           script: |
-            # Создаем папку для плагина
-            mkdir -p ${{ secrets.YAPAY_PLUGINS_PATH }}/my-plugin
+            # Создаем папку для плагина (если нужно)
+            mkdir -p ${{ secrets.YAPAY_PLUGINS_PATH }}
 
             # Останавливаем сервер для обновления
             sudo systemctl stop yapay
@@ -101,11 +121,14 @@ git push origin main
 #### 1. Подготовка файлов
 
 ```bash
-# Сборка плагина
-make build
+# Проверка совместимости builder-образа
+make check-compatibility
+
+# Сборка плагина с официальным builder-образом
+make build-plugin-my-plugin
 
 # Создание архива
-tar -czf my-plugin.tar.gz my-plugin.so config.yaml README.md
+tar -czf my-plugin.tar.gz plugins/my-plugin/my-plugin.so config.yaml README.md
 ```
 
 #### 2. Передача файлов

@@ -1,0 +1,73 @@
+# GitHub Action для автоматического развертывания плагинов
+# 
+# ИНСТРУКЦИЯ ПО ВКЛЮЧЕНИЮ:
+# 1. Раскомментируйте строки ниже для включения Action
+# 2. Настройте Secrets в настройках репозитория
+# 3. Создайте пользователя deployer на сервере
+#
+# Подробная инструкция: docs/development/workflow.md
+
+# Раскомментируйте эти строки для включения Action:
+# on:
+#   push:
+#     branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    
+    - name: Build all plugins
+      run: |
+        cd yapay-sdk
+        make build-plugins
+    
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          echo "Starting deployment..."
+          
+          # Создаем резервную копию текущих плагинов
+          sudo mkdir -p /tmp/yapay-backup-$(date +%Y%m%d-%H%M%S)
+          sudo cp -r ${{ secrets.PLUGINS_PATH }}/* /tmp/yapay-backup-$(date +%Y%m%d-%H%M%S)/ 2>/dev/null || true
+          
+          # Копируем только плагины из текущего репозитория (hot-reload автоматически подхватит изменения)
+          for plugin_dir in /tmp/plugins/*; do
+            if [ -d "$$plugin_dir" ]; then
+              plugin_name=$$(basename "$$plugin_dir")
+              echo "Deploying plugin: $$plugin_name"
+              sudo mkdir -p ${{ secrets.PLUGINS_PATH }}/$$plugin_name
+              sudo cp -r $$plugin_dir/* ${{ secrets.PLUGINS_PATH }}/$$plugin_name/
+            fi
+          done
+          
+          # Устанавливаем правильные права
+          sudo chown -R ${{ secrets.PLUGINS_USER }} ${{ secrets.PLUGINS_PATH }}
+          sudo chmod -R 755 ${{ secrets.PLUGINS_PATH }}
+          
+          # Проверяем статус сервера (без перезапуска)
+          sudo systemctl status yapay --no-pager
+          
+          echo "Deployment completed successfully! Plugins hot-reloaded."
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: plugins-${{ github.sha }}
+        path: yapay-sdk/plugins/
+        retention-days: 30

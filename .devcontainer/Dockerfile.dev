@@ -1,91 +1,104 @@
 # Development Dockerfile for YAPAY SDK
-# Based on the official builder for 100% consistency
+# This file defines the development environment for the Yapay SDK.
+# It is based on the official 'yapay:builder' image to ensure consistency.
+
+# Use the official builder image as the base
 FROM metalmon/yapay:builder
 
-# Switch to root for development setup
+# --- Build-time Arguments ---
+# These arguments can be overridden during the build process (e.g., docker build --build-arg GO_VERSION=1.22)
+
+# Go build-time arguments
+ARG GOOS=linux
+ARG GOARCH=amd64
+ARG CGO_ENABLED=1
+ARG GO111MODULE=on
+ARG GOPROXY=https://proxy.golang.org,direct
+ARG GOSUMDB=sum.golang.org
+
+# CloudPub tunnel tool version
+ARG CLOUDPUB_VERSION="2.4.1"
+ARG CLOUDPUB_ARCH="linux-x86_64"
+
+
+# --- Environment Variables ---
+# These variables are available both during the build and at runtime in the container.
+
+# Persist Go build-time arguments as environment variables
+ENV GOOS=${GOOS} \
+    GOARCH=${GOARCH} \
+    CGO_ENABLED=${CGO_ENABLED} \
+    GO111MODULE=${GO111MODULE} \
+    GOPROXY=${GOPROXY} \
+    GOSUMDB=${GOSUMDB}
+
+# Runtime-specific environment variables
+ENV LOG_LEVEL=debug \
+    YANDEX_SANDBOX_MODE=true \
+    METRICS_PORT=8080 \
+    TERM=xterm-256color \
+    COLORTERM=truecolor
+
+
+# --- System Setup ---
+# Switch to root user to install packages and set up the environment
 USER root
 
-# Install additional development tools (build tools like git, gcc, make are already in the base image)
+# Install additional development and debugging tools
 RUN apk add --no-cache \
-    # Development tools
-    curl \
-    wget \
-    jq \
-    file \
-    vim \
-    nano \
-    htop \
-    tree \
-    bash \
-    bash-completion \
-    # Network tools
-    netcat-openbsd \
-    tcpdump \
-    # Debugging tools
-    strace \
-    gdb \
+    curl wget jq file vim nano htop tree bash bash-completion \
+    netcat-openbsd tcpdump \
+    strace gdb \
     && rm -rf /var/cache/apk/*
 
-# Install CloudPub tunnel tool
-RUN CLOUDPUB_VERSION="2.4.1" && \
-    CLOUDPUB_ARCH="linux-x86_64" && \
-    CLOUDPUB_URL="https://cloudpub.ru/download/stable/clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" && \
-    wget -q "$CLOUDPUB_URL" -O "clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" && \
-    tar -xf "clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" && \
+# Install CloudPub tunnel tool for webhook testing
+RUN CLOUDPUB_URL="https://cloudpub.ru/download/stable/clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" && \
+    wget -q "${CLOUDPUB_URL}" -O "clo.tar.gz" && \
+    tar -xf "clo.tar.gz" && \
     chmod +x ./clo && \
     mv ./clo /usr/local/bin/clo && \
-    rm -f "clo-${CLOUDPUB_VERSION}-stable-${CLOUDPUB_ARCH}.tar.gz" || \
-    echo "CloudPub tunnel installation failed - continuing without it"
+    rm "clo.tar.gz" || \
+    echo "Warning: CloudPub tunnel installation failed. Continuing without it."
 
-# Install Go development tools (Go is guaranteed to be in the base image)
-RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest && \
-    go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest && \
-    go install github.com/go-delve/delve/cmd/dlv@latest && \
-    go install github.com/air-verse/air@latest && \
-    go install golang.org/x/tools/cmd/goimports@latest
+# Install Go development tools with better error handling
+RUN echo "Installing Go development tools..." && \
+    go version && \
+    go env GOPROXY && \
+    go env GOSUMDB && \
+    (go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || echo "golangci-lint installation failed") && \
+    (go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest || echo "gosec installation failed") && \
+    (go install github.com/go-delve/delve/cmd/dlv@latest || echo "delve installation failed") && \
+    (go install github.com/air-verse/air@latest || echo "air installation failed") && \
+    (go install golang.org/x/tools/cmd/goimports@latest || echo "goimports installation failed") && \
+    echo "Go tools installation completed"
 
-# Create development workspace
+# --- Workspace and User Setup ---
+
+# Set up the main workspace directory
 WORKDIR /workspace
 
 # Create directories for SDK development
 RUN mkdir -p /workspace/sdk /workspace/examples /workspace/tools /workspace/plugins
 
-# Set up bash completion and aliases
+# Set up bash profile for the root user
 RUN echo 'source /usr/share/bash-completion/bash_completion' >> /root/.bashrc && \
     echo 'alias ll="ls -la"' >> /root/.bashrc && \
-    echo 'alias la="ls -la"' >> /root/.bashrc && \
-    echo 'alias ..="cd .."' >> /root/.bashrc && \
-    echo 'alias ...="cd ../.."' >> /root/.bashrc && \
     echo 'export PATH=$PATH:/go/bin' >> /root/.bashrc && \
     echo 'export GOPATH=/go' >> /root/.bashrc
 
-# Create development user
+# Create a non-root development user for better security
 RUN addgroup -g 1000 -S dev && \
     adduser -u 1000 -S dev -G dev -s /bin/bash && \
     echo 'export PATH=$PATH:/go/bin' >> /home/dev/.bashrc && \
     echo 'export GOPATH=/go' >> /home/dev/.bashrc
 
-# Set ownership of workspace and Go cache
+# Set ownership of workspace and Go cache to the dev user
 RUN chown -R dev:dev /workspace /go
 
-# Create development scripts directory
-RUN mkdir -p /scripts && chown -R dev:dev /scripts
+# --- Final Configuration ---
 
-# Set environment variables
-ENV GO111MODULE=on
-ENV GOPROXY=https://proxy.golang.org,direct
-ENV GOSUMDB=sum.golang.org
-ENV CGO_ENABLED=1
-ENV GOOS=linux
-ENV GOARCH=amd64
-ENV LOG_LEVEL=debug
-ENV YANDEX_SANDBOX_MODE=true
-ENV METRICS_PORT=8080
-ENV TERM=xterm-256color
-ENV COLORTERM=truecolor
-
-# Expose ports for development
+# Expose ports for the application, debugging, etc.
 EXPOSE 8080 8081 2345
 
-# Default command - keep container running
+# Default command to keep the container running
 CMD ["tail", "-f", "/dev/null"]

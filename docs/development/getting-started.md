@@ -34,14 +34,11 @@ func NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.
 ### 1. Инициализация проекта
 
 ```bash
-# Создаем директорию плагина
-mkdir my-plugin
-cd my-plugin
+# Создаем плагин из шаблона
+make new-plugin-my-plugin
+cd src/my-plugin
 
-# Инициализируем Go модуль
-go mod init my-plugin
-
-# Добавляем зависимость на SDK
+# Плагин уже настроен с правильными зависимостями
 go get github.com/metalmon/yapay-sdk@latest
 ```
 
@@ -187,42 +184,91 @@ field_labels:
   course_name: "Название курса"
 ```
 
-### 4. Makefile для сборки
+### 4. Сборка и тестирование
 
-```makefile
-PLUGIN_NAME := my-plugin
-PLUGIN_DIR := ../../plugins/$(PLUGIN_NAME)
+**Используйте команды из корневого Makefile SDK:**
 
-.PHONY: build clean test
-
-build:
-	@echo "Building plugin $(PLUGIN_NAME)..."
-	@mkdir -p $(PLUGIN_DIR)
-	@CGO_ENABLED=1 go build -buildmode=plugin -o $(PLUGIN_DIR)/$(PLUGIN_NAME).so .
-	@cp config.yaml $(PLUGIN_DIR)/
-	@echo "Plugin built successfully: $(PLUGIN_DIR)/$(PLUGIN_NAME).so"
-
-clean:
-	@echo "Cleaning plugin $(PLUGIN_NAME)..."
-	@rm -rf $(PLUGIN_DIR)
-	@echo "Plugin cleaned"
-
-test:
-	@echo "Running tests for plugin $(PLUGIN_NAME)..."
-	@go test -v ./...
-
-debug:
-	@echo "Debug mode for plugin $(PLUGIN_NAME)..."
-	@LOG_LEVEL=debug go run .
+```bash
+# Из корня yapay-sdk проекта
+make build-plugin-my-plugin    # Умная сборка (автоматически определяет окружение)
+make test-plugins             # Тестирование всех плагинов
+make debug-plugin-my-plugin   # Отладка плагина
+make clean                    # Очистка артефактов
 ```
+
+## Сборка плагинов для совместимости
+
+### Важность совместимости
+
+**Критически важно**: Плагины должны быть собраны с использованием того же builder-образа, что и основной Yapay сервер, для обеспечения 100% совместимости. У разработчика плагина нет доступа к исходному коду сервера - только к готовому образу с бинарником.
+
+### Система сборки
+
+Yapay SDK использует **официальный builder-образ** `metalmon/yapay:builder`, который содержит:
+- **Тот же Go 1.21** - как в production сервере
+- **Тот же Alpine Linux** - как в production среде  
+- **Те же зависимости** - предзагружены из основного проекта
+- **Идентичные build flags** - для полной совместимости
+
+### Команды сборки
+
+```bash
+# Проверить доступность builder-образа
+make check-compatibility
+
+# Собрать все примеры плагинов
+make build-plugins
+
+# Собрать конкретный плагин
+make build-plugin-my-plugin
+
+# Запустить тесты
+make test
+
+# Очистить артефакты сборки
+make clean
+```
+
+### Процесс сборки
+
+Каждый плагин собирается в Docker контейнере с официальным builder-образом:
+
+1. **Монтирование исходников** в контейнер
+2. **Компиляция с идентичными параметрами**:
+   - `CGO_ENABLED=1`
+   - `GOOS=linux GOARCH=amd64`
+   - `-buildmode=plugin`
+   - `GOPRIVATE=github.com/metalmon/yapay-sdk`
+3. **Копирование результата** в `plugins/` директорию
+
+### Проверка совместимости
+
+```bash
+make check-compatibility
+```
+
+Эта команда автоматически определяет:
+- **Окружение разработки** (хост, Docker, Alpine devcontainer)
+- **Доступность Docker** (если нужен)
+- **Наличие builder-образа** (будет подгружен автоматически при необходимости)
+
+### Умная сборка
+
+SDK автоматически определяет окружение и выбирает оптимальный способ сборки:
+- **В Alpine devcontainer** → прямая сборка
+- **В другом Docker контейнере** → использование builder-образа
+- **На хосте** → автоматическая подгрузка builder-образа
 
 ## Сборка и развертывание
 
 ### Локальная разработка
 
 ```bash
-# Сборка плагина
-make build
+# Проверка совместимости
+make check-compatibility
+
+# Сборка плагина для совместимости
+make build-plugin-my-plugin
 
 # Запуск тестов
 make test
@@ -233,7 +279,7 @@ make clean
 
 ### Проверка плагина
 
-После сборки плагин будет доступен в директории `plugins/my-plugin/`. Сервер автоматически обнаружит и загрузит плагин при запуске.
+После сборки плагин будет доступен в директории `plugins/my-plugin/`. Плагин собран с использованием официального builder-образа и гарантированно совместим с production сервером.
 
 ## Лучшие практики
 

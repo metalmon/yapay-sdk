@@ -17,11 +17,14 @@ jobs:
         with:
           go-version: "1.21"
 
-      - name: Run tests
-        run: make check-all
+      - name: Check compatibility
+        run: make check-compatibility
 
-      - name: Build SDK
-        run: make sdk-build
+      - name: Build example plugins
+        run: make build-plugins
+
+      - name: Test plugins
+        run: make test-plugins
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -39,6 +42,15 @@ jobs:
 
             ```bash
             go get github.com/metalmon/yapay-sdk@${{ github.ref_name }}
+            ```
+
+            ## Quick Start
+
+            ```bash
+            git clone https://github.com/metalmon/yapay-sdk.git
+            cd yapay-sdk
+            make new-plugin-my-plugin
+            make build-plugin-my-plugin
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

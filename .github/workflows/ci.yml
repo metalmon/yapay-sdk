@@ -10,48 +10,28 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        go-version: [1.21, 1.22]
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: "1.21"
 
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+      - name: Check compatibility
+        run: make check-compatibility
 
-      - name: Install dependencies
-        run: make install-deps
+      - name: Build example plugins
+        run: make build-plugins
 
-      - name: Build SDK
-        run: make sdk-build
+      - name: Test plugins
+        run: make test-plugins
 
-      - name: Test SDK
-        run: make sdk-test
+      - name: Build tools
+        run: make build-tools
 
-      - name: Build examples
-        run: make build
-
-      - name: Test examples
-        run: make test
-
-      - name: Run linter
-        run: make lint
-
-      - name: Check all examples
-        run: make check-all
+      - name: Test tools
+        run: make test-tools
 
   security:
     runs-on: ubuntu-latest

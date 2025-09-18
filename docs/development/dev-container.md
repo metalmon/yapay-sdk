@@ -103,9 +103,11 @@ make dev-test
 
 | Команда | Описание |
 |---------|----------|
-| `make dev-plugins` | Сборка и тестирование плагинов |
-| `make dev-server` | Запуск Yapay сервера для интеграции |
-| `make dev-reload` | Hot reload с новым кодом |
+| `make build-plugins` | Сборка всех плагинов с официальным builder-образом |
+| `make build-plugin-NAME` | Сборка конкретного плагина для совместимости |
+| `make check-compatibility` | Проверка совместимости builder-образа |
+| `make test-plugins` | Тестирование всех плагинов |
+| `make debug-plugin-NAME` | Отладка конкретного плагина |
 | `make dev-tunnel` | Запуск CloudPub туннеля для тестирования webhook'ов |
 | `make dev-tunnel-start` | Запуск CloudPub туннеля |
 | `make dev-tunnel-stop` | Остановка CloudPub туннеля |
@@ -309,15 +311,20 @@ go test -v ./examples/simple-plugin
 ### 2. Разработка плагинов
 
 ```bash
-# Создание нового плагина
-make new-plugin NAME=my-plugin
+# Проверка совместимости builder-образа
+make check-compatibility
 
-# Сборка и тестирование плагина
-make dev-plugins
+# Сборка всех плагинов с официальным builder-образом
+make build-plugins
 
-# Тестирование с Yapay сервером
-make dev-server
-make dev-plugins
+# Сборка конкретного плагина
+make build-plugin-my-plugin
+
+# Тестирование плагинов
+make test-plugins
+
+# Отладка плагина
+make debug-plugin-my-plugin
 ```
 
 ### 3. Отладка
