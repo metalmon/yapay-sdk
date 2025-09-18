@@ -58,9 +58,9 @@ RUN mkdir -p /workspace/sdk /workspace/examples /workspace/tools /workspace/plug
 # Copy SDK files (will be mounted as volume in development)
 COPY . /workspace/sdk/
 
-# Download dependencies and create vendor directory
+# Download dependencies
 WORKDIR /workspace/sdk
-RUN go mod download && go mod vendor
+RUN go mod download
 
 # Set up bash completion
 RUN echo 'source /usr/share/bash-completion/bash_completion' >> /root/.bashrc && \

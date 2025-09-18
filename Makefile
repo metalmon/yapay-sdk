@@ -1,4 +1,11 @@
-.PHONY: help build examples all test clean install-deps lint dev-build dev-run dev-stop dev-shell dev-logs dev-status dev-clean dev-setup dev-test dev-debug dev-plugins dev-server dev-tunnel dev-tunnel-start dev-tunnel-stop dev-tunnel-status dev-tunnel-url
+.PHONY: help build examples all test clean install-deps lint dev-build dev-run dev-stop dev-shell dev-logs dev-status dev-clean dev-setup dev-test dev-debug dev-plugins dev-server dev-tunnel dev-tunnel-start dev-tunnel-stop dev-tunnel-status dev-tunnel-url plugins plugin-% build-plugins-alpine build-plugins-via-devcontainer build-plugin-alpine-% build-plugin-via-devcontainer-%
+
+# Colors
+GREEN := \033[0;32m
+YELLOW := \033[1;33m
+RED := \033[0;31m
+BLUE := \033[0;34m
+NC := \033[0m # No Color
 
 # Default target
 help:
@@ -52,35 +59,35 @@ help:
 
 # Smart plugin build - detects environment and uses devcontainer if needed
 plugins:
-	@echo "Building plugins (smart environment detection)..."
+	@printf "$(GREEN)Building plugins (smart environment detection)...$(NC)\n"
 	@if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then \
-		echo "Running in Alpine devcontainer - building plugins directly"; \
+		printf "$(YELLOW)Running in Alpine devcontainer - building plugins directly$(NC)\n"; \
 		$(MAKE) build-plugins-alpine; \
 	elif [ -f /.dockerenv ]; then \
-		echo "Running in Docker container but not Alpine - using devcontainer"; \
+		printf "$(YELLOW)Running in Docker container but not Alpine - using devcontainer$(NC)\n"; \
 		$(MAKE) build-plugins-via-devcontainer; \
 	else \
-		echo "Running on host - using devcontainer for Alpine compatibility"; \
+		printf "$(YELLOW)Running on host - using devcontainer for Alpine compatibility$(NC)\n"; \
 		$(MAKE) build-plugins-via-devcontainer; \
 	fi
 
 # Build plugins directly in Alpine environment (when already in devcontainer)
 build-plugins-alpine:
-	@echo "Building plugins in Alpine environment..."
+	@printf "$(GREEN)Building plugins in Alpine environment...$(NC)\n"
 	@for plugin in src/*/; do \
 		if [ -f "$$plugin/Makefile" ]; then \
 			plugin_name=$$(basename "$$plugin"); \
-			echo "Building plugin: $$plugin_name"; \
-			(cd "$$plugin" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GOFLAGS="-mod=vendor" $(MAKE) build); \
+			printf "$(YELLOW)Building plugin: $$plugin_name$(NC)\n"; \
+			(cd "$$plugin" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
 		fi; \
 	done
-	@echo "All plugins built successfully in Alpine environment!"
+	@printf "$(GREEN)All plugins built successfully in Alpine environment!$(NC)\n"
 
 # Build plugins via devcontainer (when not in Alpine environment)
 build-plugins-via-devcontainer:
-	@echo "Building plugins via devcontainer for Alpine compatibility..."
+	@printf "$(GREEN)Building plugins via devcontainer for Alpine compatibility...$(NC)\n"
 	@if ! docker ps -q --filter name=yapay-sdk-devcontainer | grep -q .; then \
-		echo "Devcontainer not running - starting it..."; \
+		printf "$(YELLOW)Devcontainer not running - starting it...$(NC)\n"; \
 		docker run --rm -d --name yapay-sdk-devcontainer \
 			-v $(PWD):/workspace \
 			-w /workspace \
@@ -88,46 +95,46 @@ build-plugins-via-devcontainer:
 			tail -f /dev/null; \
 		sleep 2; \
 	fi
-	@echo "Building plugins in devcontainer..."
+	@printf "$(YELLOW)Building plugins in devcontainer...$(NC)\n"
 	@docker exec yapay-sdk-devcontainer make build-plugins-alpine
-	@echo "Plugins built via devcontainer successfully!"
+	@printf "$(GREEN)Plugins built via devcontainer successfully!$(NC)\n"
 
 # Build individual plugin (smart environment detection)
 plugin-%:
 	@plugin_name=$*; \
-	echo "Building plugin: $$plugin_name (smart environment detection)..."; \
+	printf "$(GREEN)Building plugin: $$plugin_name (smart environment detection)...$(NC)\n"; \
 	if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then \
-		echo "Running in Alpine devcontainer - building plugin directly"; \
+		printf "$(YELLOW)Running in Alpine devcontainer - building plugin directly$(NC)\n"; \
 		$(MAKE) build-plugin-alpine-$$plugin_name; \
 	elif [ -f /.dockerenv ]; then \
-		echo "Running in Docker container but not Alpine - using devcontainer"; \
+		printf "$(YELLOW)Running in Docker container but not Alpine - using devcontainer$(NC)\n"; \
 		$(MAKE) build-plugin-via-devcontainer-$$plugin_name; \
 	else \
-		echo "Running on host - using devcontainer for Alpine compatibility"; \
+		printf "$(YELLOW)Running on host - using devcontainer for Alpine compatibility$(NC)\n"; \
 		$(MAKE) build-plugin-via-devcontainer-$$plugin_name; \
 	fi
 
 # Build individual plugin directly in Alpine environment
 build-plugin-alpine-%:
 	@plugin_name=$*; \
-	echo "Building plugin: $$plugin_name in Alpine environment..."; \
+	printf "$(GREEN)Building plugin: $$plugin_name in Alpine environment...$(NC)\n"; \
 	if [ -f "src/$$plugin_name/Makefile" ]; then \
-		(cd "src/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GOFLAGS="-mod=vendor" $(MAKE) build); \
-		echo "Plugin $$plugin_name built successfully in Alpine environment!"; \
+		(cd "src/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+		printf "$(GREEN)Plugin $$plugin_name built successfully in Alpine environment!$(NC)\n"; \
 	elif [ -f "examples/$$plugin_name/Makefile" ]; then \
-		(cd "examples/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 GOFLAGS="-mod=vendor" $(MAKE) build); \
-		echo "Plugin $$plugin_name built successfully in Alpine environment!"; \
+		(cd "examples/$$plugin_name" && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 $(MAKE) build); \
+		printf "$(GREEN)Plugin $$plugin_name built successfully in Alpine environment!$(NC)\n"; \
 	else \
-		echo "Error: Plugin $$plugin_name not found in src/ or examples/"; \
+		printf "$(RED)Error: Plugin $$plugin_name not found in src/ or examples/$(NC)\n"; \
 		exit 1; \
 	fi
 
 # Build individual plugin via devcontainer
 build-plugin-via-devcontainer-%:
 	@plugin_name=$*; \
-	echo "Building plugin: $$plugin_name via devcontainer..."; \
+	printf "$(GREEN)Building plugin: $$plugin_name via devcontainer...$(NC)\n"; \
 	if ! docker ps -q --filter name=yapay-sdk-devcontainer | grep -q .; then \
-		echo "Devcontainer not running - starting it..."; \
+		printf "$(YELLOW)Devcontainer not running - starting it...$(NC)\n"; \
 		docker run --rm -d --name yapay-sdk-devcontainer \
 			-v $(PWD):/workspace \
 			-w /workspace \
@@ -135,45 +142,45 @@ build-plugin-via-devcontainer-%:
 			tail -f /dev/null; \
 		sleep 2; \
 	fi; \
-	echo "Building plugin $$plugin_name in devcontainer..."; \
+	printf "$(YELLOW)Building plugin $$plugin_name in devcontainer...$(NC)\n"; \
 	docker exec yapay-sdk-devcontainer make build-plugin-alpine-$$plugin_name; \
-	echo "Plugin $$plugin_name built via devcontainer successfully!"
+	printf "$(GREEN)Plugin $$plugin_name built via devcontainer successfully!$(NC)\n"
 
-# Legacy command for backward compatibility
-build: plugins
+# Build everything (plugins + examples)
+build: plugins examples
 
 # Build all examples
 examples:
-	@echo "Building all examples..."
+	@printf "$(GREEN)Building all examples...$(NC)\n"
 	@for example in examples/*/; do \
 		if [ -f "$$example/Makefile" ]; then \
-			echo "Building $$example..."; \
+			printf "$(YELLOW)Building $$example...$(NC)\n"; \
 			$(MAKE) -C "$$example" build; \
 		fi; \
 	done
 
 # Build everything (plugins + examples)
 all:
-	@echo "Building everything..."
+	@printf "$(GREEN)Building everything...$(NC)\n"
 	@$(MAKE) plugins
 	@$(MAKE) examples
 
 # Test all plugins and examples
 test:
-	@echo "Testing all plugins and examples..."
+	@printf "$(GREEN)Testing all plugins and examples...$(NC)\n"
 	@for plugin in src/*/ examples/*/; do \
 		if [ -f "$$plugin/Makefile" ]; then \
-			echo "Testing $$plugin..."; \
+			printf "$(YELLOW)Testing $$plugin...$(NC)\n"; \
 			$(MAKE) -C "$$plugin" test; \
 		fi; \
 	done
 
 # Clean all build artifacts
 clean:
-	@echo "Cleaning build artifacts..."
+	@printf "$(GREEN)Cleaning build artifacts...$(NC)\n"
 	@for plugin in src/*/ examples/*/; do \
 		if [ -f "$$plugin/Makefile" ]; then \
-			echo "Cleaning $$plugin..."; \
+			printf "$(YELLOW)Cleaning $$plugin...$(NC)\n"; \
 			$(MAKE) -C "$$plugin" clean; \
 		fi; \
 	done
@@ -181,59 +188,58 @@ clean:
 
 # Install development dependencies
 install-deps:
-	@echo "Installing development dependencies..."
+	@printf "$(GREEN)Installing development dependencies...$(NC)\n"
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 # Run linter on all code
 lint:
-	@echo "Running linter..."
+	@printf "$(GREEN)Running linter...$(NC)\n"
 	golangci-lint run ./...
 
 # Build SDK
 sdk-build:
-	@echo "Building SDK..."
+	@printf "$(GREEN)Building SDK...$(NC)\n"
 	@go mod tidy
-	@go mod vendor
-	@go build -mod=vendor ./...
+	@go build ./...
 
 # Test SDK
 sdk-test:
-	@echo "Testing SDK..."
-	@go test -mod=vendor ./...
+	@printf "$(GREEN)Testing SDK...$(NC)\n"
+	@go test ./...
 
 # Build development tools
 tools-build:
-	@echo "Building development tools..."
+	@printf "$(GREEN)Building development tools...$(NC)\n"
 	@$(MAKE) -C tools/plugin-debug build
 
 # Create new plugin from template
 new-plugin:
 	@if [ -z "$(NAME)" ]; then \
-		echo "Usage: make new-plugin NAME=my-plugin"; \
+		printf "$(RED)Usage: make new-plugin NAME=my-plugin$(NC)\n"; \
 		exit 1; \
 	fi; \
 	if [ -d "src/$(NAME)" ]; then \
-		echo "Error: Plugin '$(NAME)' already exists"; \
+		printf "$(RED)Error: Plugin '$(NAME)' already exists$(NC)\n"; \
 		exit 1; \
 	fi; \
-	echo "Creating new plugin: $(NAME)"; \
+	printf "$(GREEN)Creating new plugin: $(NAME)$(NC)\n"; \
 	cp -r examples/simple-plugin src/$(NAME); \
 	cd src/$(NAME) && \
 	sed -i "s/simple-plugin/$(NAME)/g" go.mod && \
 	sed -i "s/Simple Plugin Example/$(NAME)/g" config.yaml && \
 	sed -i "s/simple-plugin/$(NAME)/g" Makefile && \
-	echo "Plugin '$(NAME)' created in src/$(NAME)/"
+	printf "$(GREEN)Plugin '$(NAME)' created in src/$(NAME)/$(NC)\n"
 
 # Check if all plugins and examples build successfully
 check-all:
-	@echo "Checking all plugins and examples..."
+	@printf "$(GREEN)Checking all plugins and examples...$(NC)\n"
 	@$(MAKE) all
 	@$(MAKE) test
-	@echo "✅ All plugins and examples build and test successfully"
+	@printf "$(GREEN)✅ All plugins and examples build and test successfully$(NC)\n"
 
 # Update SDK dependencies
 update-sdk-deps:
-	@echo "Updating SDK dependencies..."
+	@printf "$(GREEN)Updating SDK dependencies...$(NC)\n"
 	@go get -u ./...
 	@go mod tidy
 
@@ -291,7 +297,7 @@ dev-clean:
 # Setup development environment
 dev-setup: dev-run
 	@echo "Setting up development environment..."
-	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && go mod download && go mod vendor && go mod verify"
+	docker compose -f docker-compose.dev.yml exec yapay-sdk-dev bash -c "cd /workspace/sdk && go mod download && go mod verify"
 	@echo "Development environment setup completed!"
 
 # Run tests in development container
