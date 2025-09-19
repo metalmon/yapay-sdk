@@ -1,0 +1,75 @@
+# Dependabot configuration for YAPAY SDK project
+# Optimized for SDK compatibility and LTS approach
+
+version: 2
+updates:
+  # Go dependencies - SDK проект (консервативный подход)
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"  # Реже проверки
+      day: "tuesday"
+      time: "09:00"
+      timezone: "Europe/Moscow"
+    open-pull-requests-limit: 0  # НИ ОДНОГО автоматического PR
+    reviewers:
+      - "metalmon"
+    assignees:
+      - "metalmon"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    # ПОЛНАЯ БЛОКИРОВКА - SDK должен быть стабильным для разработчиков плагинов
+    ignore:
+      # БЛОКИРУЕМ ВСЕ обновления - SDK стабильность критична
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch", "version-update:semver-minor", "version-update:semver-major"]
+    labels:
+      - "dependencies"
+      - "go"
+      - "sdk"
+      - "plugin-developer-stability"
+      - "manual-review-required"
+
+  # GitHub Actions - CI/CD для SDK
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "Europe/Moscow"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "sdk"
+
+  # Docker - devcontainer зависимости
+  - package-ecosystem: "docker"
+    directory: "/.devcontainer"
+    schedule:
+      interval: "monthly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "Europe/Moscow"
+    open-pull-requests-limit: 1
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    ignore:
+      # Только patch для devcontainer
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+    labels:
+      - "dependencies"
+      - "docker"
+      - "devcontainer"
+      - "sdk"

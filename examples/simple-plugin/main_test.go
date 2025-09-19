@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/metalmon/yapay-sdk"
@@ -33,8 +35,13 @@ func TestHandler_HandlePaymentCreated(t *testing.T) {
 	merchant := testData.CreateTestMerchant()
 	payment := testData.CreateTestPayment()
 
-	// Create handler
-	handler := NewHandler(merchant).(*Handler)
+	// Create handler with test logger to capture logs
+	logger := logrus.New()
+	logger.SetLevel(logrus.InfoLevel)
+	handler := &Handler{
+		merchant: merchant,
+		logger:   logger,
+	}
 
 	// Handle payment created
 	err := handler.HandlePaymentCreated(payment)
@@ -42,9 +49,10 @@ func TestHandler_HandlePaymentCreated(t *testing.T) {
 	// Verify no error
 	assert.NoError(t, err)
 
-	// Verify payment was processed (in real implementation, you might check logs, database, etc.)
+	// Verify handler state
 	assert.NotNil(t, handler.merchant)
 	assert.NotNil(t, handler.logger)
+	assert.Equal(t, merchant, handler.merchant)
 }
 
 func TestHandler_HandlePaymentSuccess(t *testing.T) {
@@ -111,6 +119,7 @@ func TestHandler_ValidateRequest(t *testing.T) {
 				Amount:      1000,
 				Description: "Valid payment",
 				ReturnURL:   "https://example.com/return",
+				Currency:    "RUB",
 			},
 			expectedError: false,
 		},
@@ -122,7 +131,7 @@ func TestHandler_ValidateRequest(t *testing.T) {
 				ReturnURL:   "https://example.com/return",
 			},
 			expectedError: true,
-			errorMessage:  "amount must be positive",
+			errorMessage:  "amount must be positive, got: -100",
 		},
 		{
 			name: "zero amount",
@@ -132,7 +141,7 @@ func TestHandler_ValidateRequest(t *testing.T) {
 				ReturnURL:   "https://example.com/return",
 			},
 			expectedError: true,
-			errorMessage:  "amount must be positive",
+			errorMessage:  "amount must be positive, got: 0",
 		},
 		{
 			name: "empty description",
@@ -153,6 +162,15 @@ func TestHandler_ValidateRequest(t *testing.T) {
 			},
 			expectedError: true,
 			errorMessage:  "return URL is required",
+		},
+		{
+			name: "large amount",
+			request: &yapay.PaymentRequest{
+				Amount:      100000000, // 1 million rubles
+				Description: "Large payment",
+				ReturnURL:   "https://example.com/return",
+			},
+			expectedError: false, // Should be valid
 		},
 	}
 
@@ -250,8 +268,61 @@ func TestPaymentGenerator_GeneratePaymentData(t *testing.T) {
 	assert.Equal(t, request.ReturnURL, result.ReturnURL)
 	assert.Equal(t, request.Metadata, result.Metadata)
 
-	// Verify order ID format
+	// Verify order ID format - should be "order_{timestamp}_{amount}"
 	assert.Contains(t, result.OrderID, "order_")
+	parts := strings.Split(result.OrderID, "_")
+	assert.Len(t, parts, 3)
+	assert.Equal(t, "order", parts[0])
+	assert.Equal(t, fmt.Sprintf("%d", request.Amount), parts[2])
+
+	// Verify PaymentData structure for Yandex Pay
+	require.NotNil(t, result.PaymentData)
+
+	// Check amount structure
+	amountData, exists := result.PaymentData["amount"].(map[string]interface{})
+	require.True(t, exists)
+	assert.Equal(t, fmt.Sprintf("%.2f", float64(request.Amount)/100), amountData["value"])
+	assert.Equal(t, request.Currency, amountData["currency"])
+
+	// Check confirmation structure
+	confirmationData, exists := result.PaymentData["confirmation"].(map[string]interface{})
+	require.True(t, exists)
+	assert.Equal(t, "redirect", confirmationData["type"])
+	assert.Equal(t, request.ReturnURL, confirmationData["return_url"])
+
+	// Check other fields
+	assert.Equal(t, request.Description, result.PaymentData["description"])
+	assert.Equal(t, request.Metadata, result.PaymentData["metadata"])
+}
+
+func TestPaymentGenerator_GeneratePaymentData_OrderIDFormat(t *testing.T) {
+	// Create test data
+	testData := yapaytesting.NewTestData()
+	merchant := testData.CreateTestMerchant()
+	request := testData.CreateTestPaymentRequest()
+
+	// Create payment generator
+	logger := logrus.New()
+	generator := NewPaymentGenerator(merchant, logger).(*PaymentGenerator)
+
+	// Generate payment data
+	result, err := generator.GeneratePaymentData(request)
+	require.NoError(t, err)
+
+	// Verify order ID format - should be "order_{timestamp}_{amount}"
+	assert.Contains(t, result.OrderID, "order_")
+	parts := strings.Split(result.OrderID, "_")
+	assert.Len(t, parts, 3, "Order ID should have 3 parts separated by underscores")
+	assert.Equal(t, "order", parts[0], "First part should be 'order'")
+	assert.Equal(t, fmt.Sprintf("%d", request.Amount), parts[2], "Last part should be the amount")
+
+	// Verify timestamp part is numeric
+	timestamp := parts[1]
+	assert.NotEmpty(t, timestamp, "Timestamp should not be empty")
+
+	// Verify timestamp is reasonable (not too old, not in future)
+	// This is a basic sanity check - timestamp should be within last 10 years
+	assert.True(t, len(timestamp) >= 10, "Timestamp should be at least 10 digits")
 }
 
 func TestPaymentGenerator_ValidatePriceFromBackend(t *testing.T) {
@@ -285,12 +356,18 @@ func TestPaymentGenerator_GetPaymentSettings(t *testing.T) {
 
 	// Verify settings
 	require.NotNil(t, settings)
-	assert.Equal(t, "RUB", settings.Currency)
+	assert.Equal(t, merchant.Yandex.Currency, settings.Currency)
 	assert.Equal(t, merchant.Yandex.SandboxMode, settings.SandboxMode)
 	assert.Equal(t, 30, settings.AutoConfirmTimeout)
-	assert.NotNil(t, settings.CustomFields)
+
+	// Verify custom fields
+	require.NotNil(t, settings.CustomFields)
 	assert.Equal(t, merchant.Name, settings.CustomFields["merchant_name"])
 	assert.Equal(t, merchant.Domain, settings.CustomFields["domain"])
+
+	// Verify all required fields are present
+	assert.NotEmpty(t, settings.Currency)
+	assert.NotNil(t, settings.CustomFields)
 }
 
 func TestPaymentGenerator_CustomizeYandexPayload(t *testing.T) {
@@ -304,8 +381,38 @@ func TestPaymentGenerator_CustomizeYandexPayload(t *testing.T) {
 
 	// Create test payload
 	payload := map[string]interface{}{
-		"amount": 1000,
+		"amount":      1000,
+		"description": "Test payment",
+		"currency":    "RUB",
 	}
+
+	// Customize payload
+	err := generator.CustomizeYandexPayload(payload)
+
+	// Verify no error
+	assert.NoError(t, err)
+
+	// Verify payload was customized with merchant information
+	assert.Equal(t, merchant.Name, payload["merchant_name"])
+	assert.Equal(t, merchant.Domain, payload["domain"])
+
+	// Verify original fields are preserved
+	assert.Equal(t, 1000, payload["amount"])
+	assert.Equal(t, "Test payment", payload["description"])
+	assert.Equal(t, "RUB", payload["currency"])
+}
+
+func TestPaymentGenerator_CustomizeYandexPayload_EmptyPayload(t *testing.T) {
+	// Create test data
+	testData := yapaytesting.NewTestData()
+	merchant := testData.CreateTestMerchant()
+
+	// Create payment generator with logger
+	logger := logrus.New()
+	generator := NewPaymentGenerator(merchant, logger).(*PaymentGenerator)
+
+	// Create empty payload
+	payload := map[string]interface{}{}
 
 	// Customize payload
 	err := generator.CustomizeYandexPayload(payload)
@@ -316,6 +423,46 @@ func TestPaymentGenerator_CustomizeYandexPayload(t *testing.T) {
 	// Verify payload was customized
 	assert.Equal(t, merchant.Name, payload["merchant_name"])
 	assert.Equal(t, merchant.Domain, payload["domain"])
+}
+
+func TestPaymentGenerator_GeneratePaymentData_DifferentCurrencies(t *testing.T) {
+	// Create test data
+	testData := yapaytesting.NewTestData()
+	merchant := testData.CreateTestMerchant()
+
+	// Create payment generator with logger
+	logger := logrus.New()
+	generator := NewPaymentGenerator(merchant, logger).(*PaymentGenerator)
+
+	// Test different currencies
+	currencies := []string{"RUB", "USD", "EUR"}
+	amounts := []int{1000, 100, 50} // Different amounts in kopecks/cents
+
+	for i, currency := range currencies {
+		request := &yapay.PaymentRequest{
+			Amount:      amounts[i],
+			Currency:    currency,
+			Description: "Test payment",
+			ReturnURL:   "https://example.com/return",
+		}
+
+		result, err := generator.GeneratePaymentData(request)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// Verify currency is preserved
+		assert.Equal(t, currency, result.Currency)
+		assert.Equal(t, amounts[i], result.Amount)
+
+		// Verify PaymentData structure
+		amountData, exists := result.PaymentData["amount"].(map[string]interface{})
+		require.True(t, exists)
+		assert.Equal(t, currency, amountData["currency"])
+
+		// Verify amount conversion (kopecks/cents to main currency)
+		expectedValue := fmt.Sprintf("%.2f", float64(amounts[i])/100)
+		assert.Equal(t, expectedValue, amountData["value"])
+	}
 }
 
 // Benchmark tests

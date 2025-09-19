@@ -25,10 +25,12 @@ help:
 	@echo "$(GREEN)YAPAY SDK Development Tools$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Plugin management:$(NC)"
-	@echo "  new-plugin-NAME      - Create new plugin from template"
+	@echo "  new-plugin-NAME      - Create new plugin from template (auto-replaces all template strings)"
 	@echo "  build-plugins        - Build all plugins (universal command)"
 	@echo "  build-plugin-NAME    - Build specific plugin"
 	@echo "  check-compatibility  - Check development environment compatibility"
+	@echo "  check-plugin-compatibility - Check plugin compatibility with builder image"
+	@echo "  check-sdk-compatibility - Check if SDK changes break plugins"
 	@echo ""
 	@echo "$(YELLOW)Testing:$(NC)"
 	@echo "  test                 - Run all tests (plugins + tools)"
@@ -203,6 +205,23 @@ check-compatibility:
 	fi
 	@printf "$(GREEN)Environment compatibility check completed!$(NC)\n"
 
+# Check plugin compatibility with builder image
+check-plugin-compatibility:
+	@printf "$(GREEN)Checking plugin compatibility with builder image...$(NC)\n"
+	@chmod +x ./scripts/check-plugin-compatibility.sh
+	@./scripts/check-plugin-compatibility.sh
+
+# Check if SDK changes break plugin compatibility
+check-sdk-compatibility:
+	@printf "$(GREEN)Checking SDK compatibility with existing plugins...$(NC)\n"
+	@chmod +x ./scripts/check-plugin-compatibility.sh
+	@./scripts/check-plugin-compatibility.sh
+	@if [ $$? -ne 0 ]; then \
+		printf "$(RED)SDK CHANGES WILL BREAK PLUGINS!$(NC)\n"; \
+		printf "$(YELLOW)Recommendation: Review changes or update builder image$(NC)\n"; \
+		exit 1; \
+	fi
+
 # Test commands
 test: test-plugins test-tools
 	@printf "$(GREEN)All tests completed!$(NC)\n"
@@ -325,17 +344,58 @@ new-plugin-%:
 	printf "$(GREEN)Creating new plugin: $$plugin_name in src/$(NC)\n"; \
 	mkdir -p "$$src_dir"; \
 	cp -r "$(PLUGINS_DIR)/simple-plugin/"* "$$src_dir/"; \
-	sed -i "s/simple-plugin/$$plugin_name/g" "$$src_dir/go.mod"; \
-	sed -i "s/simple-plugin/$$plugin_name/g" "$$src_dir/Makefile"; \
+	\
+	# Convert plugin name to PascalCase for Go types \
+	pascal_name=$$(echo $$plugin_name | sed 's/-\([a-z]\)/\U\1/g' | sed 's/^\([a-z]\)/\U\1/'); \
+	\
+	# Replace all occurrences of simple-plugin with new plugin name \
+	printf "$(YELLOW)Replacing template strings...$(NC)\n"; \
+	\
+	# Replace in go.mod (if exists) \
+	if [ -f "$$src_dir/go.mod" ]; then \
+		sed -i "s/simple-plugin/$$plugin_name/g" "$$src_dir/go.mod"; \
+	fi; \
+	\
+	# Remove individual Makefile (not needed - use main Makefile instead) \
+	rm -f "$$src_dir/Makefile"; \
+	\
+	# Replace in README.md \
 	sed -i "s/simple-plugin/$$plugin_name/g" "$$src_dir/README.md"; \
-	sed -i "s/SimplePlugin/$$(echo $$plugin_name | sed 's/-\([a-z]\)/\U\1/g' | sed 's/^\([a-z]\)/\U\1/')/g" "$$src_dir/main.go"; \
-	sed -i "s/SimpleGenerator/$$(echo $$plugin_name | sed 's/-\([a-z]\)/\U\1/g' | sed 's/^\([a-z]\)/\U\1/')Generator/g" "$$src_dir/main.go"; \
+	sed -i "s/Simple Plugin Example/$$pascal_name Plugin/g" "$$src_dir/README.md"; \
+	sed -i "s/Простой пример плагина/$$pascal_name плагин/g" "$$src_dir/README.md"; \
+	\
+	# Replace in config.yaml \
+	sed -i "s/simple-plugin-client/$$plugin_name-client/g" "$$src_dir/config.yaml"; \
+	sed -i "s/Simple Plugin Example/$$pascal_name Plugin/g" "$$src_dir/config.yaml"; \
+	sed -i "s/Простой пример плагина для Yapay SDK/$$pascal_name плагин для Yapay SDK/g" "$$src_dir/config.yaml"; \
+	sed -i "s/example.com/$$plugin_name.example.com/g" "$$src_dir/config.yaml"; \
+	sed -i "s/business_type: \"example\"/business_type: \"$$plugin_name\"/g" "$$src_dir/config.yaml"; \
+	\
+	# Replace in main.go \
+	sed -i "s/SimplePlugin/$$pascal_name/g" "$$src_dir/main.go"; \
+	sed -i "s/SimpleGenerator/$$pascal_name""Generator/g" "$$src_dir/main.go"; \
+	sed -i "s/simple plugin handler/$$plugin_name plugin handler/g" "$$src_dir/main.go"; \
+	sed -i "s/Simple plugin handler created/$$pascal_name plugin handler created/g" "$$src_dir/main.go"; \
+	\
+	# Replace in main_test.go \
+	if [ -f "$$src_dir/main_test.go" ]; then \
+		sed -i "s/simple-plugin/$$plugin_name/g" "$$src_dir/main_test.go"; \
+	fi; \
+	\
 	printf "$(GREEN)Plugin $$plugin_name created successfully in src/!$(NC)\n"; \
+	printf "$(YELLOW)Template replacements completed:$(NC)\n"; \
+	printf "$(YELLOW)  - Plugin name: $$plugin_name$(NC)\n"; \
+	printf "$(YELLOW)  - PascalCase name: $$pascal_name$(NC)\n"; \
+	printf "$(YELLOW)  - Client ID: $$plugin_name-client$(NC)\n"; \
+	printf "$(YELLOW)  - Domain: $$plugin_name.example.com$(NC)\n"; \
 	printf "$(YELLOW)Next steps:$(NC)\n"; \
 	printf "$(YELLOW)  1. Edit src/$$plugin_name/main.go$(NC)\n"; \
 	printf "$(YELLOW)  2. Edit src/$$plugin_name/config.yaml$(NC)\n"; \
-	printf "$(YELLOW)  3. Run: make build-plugin-$$plugin_name$(NC)\n"; \
-	printf "$(YELLOW)  4. Add to Git: git add src/$$plugin_name/$(NC)\n"
+	printf "$(YELLOW)  3. Build: make build-plugin-$$plugin_name$(NC)\n"; \
+	printf "$(YELLOW)  4. Test: make test-plugins$(NC)\n"; \
+	printf "$(YELLOW)  5. Add to Git: git add src/$$plugin_name/$(NC)\n"; \
+	printf "$(YELLOW)$(NC)\n"; \
+	printf "$(YELLOW)Note: Individual Makefile removed - use main Makefile commands$(NC)\n"
 
 # Tools command (alias for build-tools)
 tools: build-tools
