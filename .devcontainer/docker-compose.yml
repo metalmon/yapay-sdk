@@ -1,5 +1,5 @@
 services:
-  # Main development container for YAPAY SDK
+  # Main development container for YAPAY SDK with integrated server
   yapay-sdk-development:
     build:
       context: ..
@@ -8,11 +8,13 @@ services:
         GOPROXY: "https://proxy.golang.org,direct"
         GOSUMDB: "sum.golang.org"
     volumes:
-      - ..:/workspace/sdk:cached
+      - ..:/workspace:cached
       # Mount the Docker socket to allow running Docker commands from within the container (Docker-out-of-Docker)
       - /var/run/docker.sock:/var/run/docker.sock
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
+      # Mount plugins directory for hot-reload
+      - ../plugins:/workspace/plugins:cached
     environment:
       # Pass the host project path to the container, so it can be used for Docker-out-of-Docker volume mounts.
       - HOST_PROJECT_PATH=${PWD}
@@ -22,25 +24,20 @@ services:
       - CGO_ENABLED=1
       - LOG_LEVEL=debug
       - YANDEX_SANDBOX_MODE=true
-      - METRICS_PORT=8080
+      # Server Configuration
+      - PORT=8080
+      - GIN_MODE=debug
+      # Metrics Configuration
+      - METRICS_PORT=8081
+      - METRICS_REQUIRE_AUTH=false
+      # Development
       - TERM=xterm-256color
       - COLORTERM=truecolor
     ports:
-      - "8080:8080"  # YAPAY SDK main application
-      - "8081:8081"  # YAPAY SDK debug port
+      - "8080:8080"  # YAPAY server API
+      - "8081:8081"  # Metrics port
       - "2345:2345"  # Delve debugger port
     command: sleep infinity
-    networks:
-      - yapay-sdk-development-network
-
-  # Yandex Pay API mock service for development
-  yandex-pay-mock:
-    image: wiremock/wiremock:latest
-    ports:
-      - "8083:8080"
-    volumes:
-      - ./wiremock:/home/wiremock
-    command: ["--global-response-templating", "--verbose"]
     networks:
       - yapay-sdk-development-network
 

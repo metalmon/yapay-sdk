@@ -1,14 +1,23 @@
 # GitHub Action для автоматического развертывания плагинов
 # 
 # ИНСТРУКЦИЯ ПО ВКЛЮЧЕНИЮ:
-# 1. Раскомментируйте строки ниже для включения Action
-# 2. Настройте Secrets в настройках репозитория
-# 3. Создайте пользователя deployer на сервере
+# 1. Настройте Secrets в настройках репозитория
+# 2. Создайте пользователя deployer на сервере
+# 3. Для автоматического запуска раскомментируйте строки ниже
 #
 # Подробная инструкция: docs/development/workflow.md
 
-# Раскомментируйте эти строки для включения Action:
-# on:
+# Ручной запуск (всегда доступен)
+on:
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild all plugins'
+        required: false
+        default: false
+        type: boolean
+
+# Раскомментируйте эти строки для автоматического запуска при пуше:
 #   push:
 #     branches: [ main ]
 #   pull_request:
@@ -17,7 +26,8 @@
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # Запускаем для ручного запуска или для пуша в main ветку
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     
     steps:
     - name: Checkout code
@@ -26,11 +36,16 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.22'
     
     - name: Build all plugins
       run: |
         cd yapay-sdk
+        # Принудительная пересборка для ручного запуска с force_rebuild=true или для автоматического запуска
+        if [ "${{ github.event.inputs.force_rebuild }}" = "true" ] || [ "${{ github.event_name }}" = "push" ]; then
+          echo "Force rebuilding all plugins..."
+          make clean
+        fi
         make build-plugins
     
     - name: Deploy to server
@@ -40,7 +55,17 @@ jobs:
         username: ${{ secrets.SERVER_USER }}
         key: ${{ secrets.SERVER_SSH_KEY }}
         script: |
+          # Определяем параметры в зависимости от типа запуска
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            FORCE_REBUILD="${{ github.event.inputs.force_rebuild || 'false' }}"
+          else
+            # Автоматический запуск (push)
+            FORCE_REBUILD="true"
+          fi
+          
           echo "Starting deployment..."
+          echo "Force rebuild: $FORCE_REBUILD"
+          echo "Trigger: ${{ github.event_name }}"
           
           # Создаем резервную копию текущих плагинов
           sudo mkdir -p /tmp/yapay-backup-$(date +%Y%m%d-%H%M%S)

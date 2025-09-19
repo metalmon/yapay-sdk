@@ -49,6 +49,8 @@ RUN apk add --no-cache \
     curl wget jq file vim nano htop tree bash bash-completion \
     netcat-openbsd tcpdump \
     strace gdb \
+    inotify-tools \
+    docker-cli \
     && rm -rf /var/cache/apk/*
 
 # Install CloudPub tunnel tool for webhook testing
@@ -71,6 +73,10 @@ RUN echo "Installing Go development tools..." && \
     (go install github.com/air-verse/air@latest || echo "air installation failed") && \
     (go install golang.org/x/tools/cmd/goimports@latest || echo "goimports installation failed") && \
     echo "Go tools installation completed"
+
+# Copy and build YAPAY server binary for local development
+COPY --from=metalmon/yapay:latest /app/yapay-server /usr/local/bin/yapay
+RUN chmod +x /usr/local/bin/yapay
 
 # --- Workspace and User Setup ---
 

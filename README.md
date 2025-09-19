@@ -1,17 +1,17 @@
 <div align="center">
 
-# 🚀 Yapay SDK
+# Yapay SDK 🚀
 
 [![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)](https://github.com/metalmon/yapay-sdk)
 [![Status](https://img.shields.io/badge/status-ready-green.svg)](https://github.com/metalmon/yapay-sdk)
-[![Go Version](https://img.shields.io/badge/go-1.21+-00ADD8.svg)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/go-1.22+-00ADD8.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **SDK для создания плагинов бекенд прокси платежной системы Яндекс Пэй**
 
 *Создавайте индивидуальную логику обработки платежей для каждого клиента*
 
-[Документация](docs/README.md) • [Быстрый старт](QUICK_START.md) • [Поддержка](https://t.me/metal_monkey)
+[Документация](docs/README.md) • [Быстрый старт](QUICK_START.md) • [Ручное развертывание](docs/development/manual-deployment.md) • [Поддержка](https://t.me/metal_monkey)
 
 </div>
 
