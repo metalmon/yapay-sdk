@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 CONTAINER_NAME="yapay-sdk-dev"
-COMPOSE_FILE="docker-compose.dev.yml"
+COMPOSE_FILE=".devcontainer/docker-compose.yml"
 
 echo -e "${BLUE}Yapay SDK Development Test Suite${NC}"
 echo "=================================="
@@ -38,7 +38,7 @@ fi
 # Function to run unit tests
 run_unit_tests() {
     echo -e "${YELLOW}Running unit tests...${NC}"
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && go test -v ./..."
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && go test -v ./..."
     echo -e "${GREEN}Unit tests completed!${NC}"
 }
 
@@ -48,14 +48,24 @@ run_integration_tests() {
     
     # Start Yapay server for integration testing
     echo -e "${BLUE}Starting Yapay server for integration testing...${NC}"
-    run_compose up -d yapay-server-dev
+    
+    # Start server in background inside the container
+    run_compose exec -d yapay-sdk-development bash -c "cd /workspace && .devcontainer/start-server.sh"
     
     # Wait for server to be ready
     echo -e "${BLUE}Waiting for Yapay server to be ready...${NC}"
-    sleep 15
+    sleep 10
+    
+    # Check if server is running
+    if run_compose exec yapay-sdk-dev curl -f http://localhost:8080/api/v1/health >/dev/null 2>&1; then
+        echo -e "${GREEN}✅ Yapay server is running${NC}"
+    else
+        echo -e "${RED}❌ Yapay server failed to start${NC}"
+        return 1
+    fi
     
     # Run integration tests
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && go test -v -tags=integration ./..."
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && go test -v -tags=integration ./..."
     
     echo -e "${GREEN}Integration tests completed!${NC}"
 }
@@ -66,14 +76,14 @@ run_plugin_tests() {
     
     # Build plugins first
     echo -e "${BLUE}Building plugins...${NC}"
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && make build"
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && make build-plugins"
     
     # Test each plugin
-    for plugin_dir in examples/*/; do
+    for plugin_dir in src/*/; do
         if [ -d "$plugin_dir" ]; then
             plugin_name=$(basename "$plugin_dir")
             echo -e "${BLUE}Testing plugin: $plugin_name${NC}"
-            run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk/examples/$plugin_name && go test -v ./..."
+            run_compose exec yapay-sdk-dev bash -c "cd /workspace/src/$plugin_name && go test -v ./..."
         fi
     done
     
@@ -83,29 +93,29 @@ run_plugin_tests() {
 # Function to run benchmark tests
 run_benchmark_tests() {
     echo -e "${YELLOW}Running benchmark tests...${NC}"
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && go test -bench=. -benchmem ./..."
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && go test -bench=. -benchmem ./..."
     echo -e "${GREEN}Benchmark tests completed!${NC}"
 }
 
 # Function to run linting
 run_linting() {
     echo -e "${YELLOW}Running linting...${NC}"
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && make lint"
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && make test"
     echo -e "${GREEN}Linting completed!${NC}"
 }
 
 # Function to run security scan
 run_security_scan() {
     echo -e "${YELLOW}Running security scan...${NC}"
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && gosec ./..."
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && gosec ./..."
     echo -e "${GREEN}Security scan completed!${NC}"
 }
 
 # Function to run code coverage
 run_coverage() {
     echo -e "${YELLOW}Running code coverage analysis...${NC}"
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && go test -coverprofile=coverage.out ./..."
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && go tool cover -html=coverage.out -o coverage.html"
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && go test -coverprofile=coverage.out ./..."
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && go tool cover -html=coverage.out -o coverage.html"
     echo -e "${GREEN}Code coverage analysis completed!${NC}"
     echo -e "${BLUE}Coverage report saved to coverage.html${NC}"
 }

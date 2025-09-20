@@ -75,8 +75,9 @@ make test-plugins             # Протестировать плагины
 
 **🚀 Разработка**
 ```bash
+make update-dev-image         # Обновить dev-образ (рекомендуется)
 make check-compatibility      # Проверка окружения
-make build-examples           # Сборка примеров
+make build-plugins            # Сборка плагинов
 make debug-plugin-NAME        # Отладка плагина
 make tunnel-start             # Туннель для webhook'ов
 ```

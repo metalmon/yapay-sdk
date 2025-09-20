@@ -23,7 +23,7 @@ fi
 # Build plugins first
 echo -e "${YELLOW}📦 Building plugins...${NC}"
 cd /workspace
-make build-examples
+make build-plugins
 
 # Check if plugins were built successfully
 if [ ! -f "/workspace/plugins/simple-plugin/simple-plugin.so" ]; then
@@ -55,4 +55,4 @@ echo -e "  Plugins Directory: /workspace/plugins"
 echo -e "${GREEN}🎯 Starting YAPAY Server...${NC}"
 
 # Start the server
-exec /usr/local/bin/yapay
+exec /usr/local/bin/yapay-server

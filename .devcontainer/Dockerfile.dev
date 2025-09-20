@@ -75,8 +75,8 @@ RUN echo "Installing Go development tools..." && \
     echo "Go tools installation completed"
 
 # Copy and build YAPAY server binary for local development
-COPY --from=metalmon/yapay:latest /app/yapay-server /usr/local/bin/yapay
-RUN chmod +x /usr/local/bin/yapay
+COPY --from=metalmon/yapay:latest /app/yapay-server /usr/local/bin/yapay-server
+RUN chmod +x /usr/local/bin/yapay-server
 
 # --- Workspace and User Setup ---
 
@@ -84,7 +84,7 @@ RUN chmod +x /usr/local/bin/yapay
 WORKDIR /workspace
 
 # Create directories for SDK development
-RUN mkdir -p /workspace/sdk /workspace/examples /workspace/tools /workspace/plugins
+RUN mkdir -p /workspace/src /workspace/tools /workspace/plugins
 
 # Set up bash profile for the root user
 RUN echo 'source /usr/share/bash-completion/bash_completion' >> /root/.bashrc && \

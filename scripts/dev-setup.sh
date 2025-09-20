@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 CONTAINER_NAME="yapay-sdk-dev"
-COMPOSE_FILE="docker-compose.dev.yml"
+COMPOSE_FILE=".devcontainer/docker-compose.yml"
 
 echo -e "${BLUE}Yapay SDK Development Environment Setup${NC}"
 echo "=============================================="
@@ -62,15 +62,15 @@ fi
 
 # Setup Go modules
 echo -e "${YELLOW}Setting up Go modules...${NC}"
-run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && go mod download && go mod verify"
+run_compose exec yapay-sdk-dev bash -c "cd /workspace && go mod download && go mod verify"
 
 # Install development tools
 echo -e "${YELLOW}Installing development tools...${NC}"
-run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && make install-deps"
+run_compose exec yapay-sdk-dev bash -c "cd /workspace && make build-tools"
 
 # Run initial tests
 echo -e "${YELLOW}Running initial tests...${NC}"
-run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && make test"
+run_compose exec yapay-sdk-dev bash -c "cd /workspace && make test"
 
 echo -e "${GREEN}Development environment setup completed successfully!${NC}"
 echo ""
@@ -85,6 +85,6 @@ echo ""
 echo -e "${BLUE}Development URLs:${NC}"
 echo "  SDK Development Server: http://localhost:8080"
 echo "  Debug Port: 2345"
-echo "  Yapay Server (if started): http://localhost:8082"
+echo "  Yapay Server (if started): http://localhost:8080"
 echo ""
 echo -e "${GREEN}Happy coding! 🚀${NC}"

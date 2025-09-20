@@ -4,7 +4,6 @@
 .PHONY: help build-plugins build-plugin-% clean check-compatibility test test-plugins test-tools build-tools tunnel tunnel-start tunnel-stop tunnel-status tunnel-url debug-plugin debug-plugin-% tools build-plugin-debug plugin-list plugin-reload plugin-refresh-dirs update-builder
 
 # Configuration
-PLUGINS_DIR := examples
 OUTPUT_DIR := plugins
 TOOLS_DIR := tools
 DOCKER_IMAGE := metalmon/yapay
@@ -61,6 +60,7 @@ help:
 	@echo ""
 	@echo "$(YELLOW)Builder Management:$(NC)"
 	@echo "  update-builder       - Update builder image from registry"
+	@echo "  update-dev-image     - Update development image from registry"
 	@echo ""
 	@echo "$(YELLOW)Utilities:$(NC)"
 	@echo "  clean                - Clean build artifacts"
@@ -161,7 +161,7 @@ build-plugin-%:
 clean:
 	@printf "$(YELLOW)Cleaning build artifacts...$(NC)\n"
 	rm -rf $(OUTPUT_DIR)
-	@for plugin_dir in src/* examples/*; do \
+	@for plugin_dir in src/*; do \
 		if [ -d "$$plugin_dir" ]; then \
 			plugin_name=$$(basename "$$plugin_dir"); \
 			rm -f $$plugin_dir/*.so; \
@@ -229,7 +229,7 @@ test: test-plugins test-tools
 # Test plugins
 test-plugins:
 	@printf "$(GREEN)Testing plugins...$(NC)\n"
-	@for plugin_dir in $(PLUGINS_DIR)/*; do \
+	@for plugin_dir in src/*; do \
 		if [ -d "$$plugin_dir" ] && [ -f "$$plugin_dir/go.mod" ]; then \
 			plugin_name=$$(basename "$$plugin_dir"); \
 			printf "$(YELLOW)Testing plugin: $$plugin_name$(NC)\n"; \
@@ -343,7 +343,7 @@ new-plugin-%:
 	fi; \
 	printf "$(GREEN)Creating new plugin: $$plugin_name in src/$(NC)\n"; \
 	mkdir -p "$$src_dir"; \
-	cp -r "$(PLUGINS_DIR)/simple-plugin/"* "$$src_dir/"; \
+	cp -r "src/simple-plugin/"* "$$src_dir/"; \
 	\
 	# Convert plugin name to PascalCase for Go types \
 	pascal_name=$$(echo $$plugin_name | sed 's/-\([a-z]\)/\U\1/g' | sed 's/^\([a-z]\)/\U\1/'); \
@@ -456,4 +456,10 @@ update-builder:
 	@printf "$(BLUE)Pulling latest builder image from registry...$(NC)\n"
 	docker pull $(DOCKER_IMAGE):$(BUILDER_TAG)
 	@printf "$(GREEN)Builder image updated successfully!$(NC)\n"
+
+# Development image management
+update-dev-image:
+	@printf "$(BLUE)Updating development image...$(NC)\n"
+	@chmod +x ./scripts/update-dev-image.sh
+	@./scripts/update-dev-image.sh
 

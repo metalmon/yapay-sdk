@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 CONTAINER_NAME="yapay-sdk-dev"
-COMPOSE_FILE="docker-compose.dev.yml"
+COMPOSE_FILE=".devcontainer/docker-compose.yml"
 DEBUG_PORT="2345"
 
 echo -e "${BLUE}Yapay SDK Development Debug Helper${NC}"
@@ -58,7 +58,7 @@ start_debug_server() {
     echo -e "${YELLOW}Press Ctrl+C to stop debug server${NC}"
     echo ""
     
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && dlv debug --headless --listen=:$DEBUG_PORT --api-version=2"
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && dlv debug --headless --listen=:$DEBUG_PORT --api-version=2"
 }
 
 # Function to open shell
@@ -86,13 +86,13 @@ check_health() {
 # Function to run tests with debug
 run_debug_tests() {
     echo -e "${YELLOW}Running tests with debug output...${NC}"
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && LOG_LEVEL=debug make test"
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && LOG_LEVEL=debug make test"
 }
 
 # Function to profile memory
 profile_memory() {
     echo -e "${YELLOW}Profiling memory usage...${NC}"
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && go test -memprofile=mem.prof -bench=. ./..."
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && go test -memprofile=mem.prof -bench=. ./..."
     echo -e "${GREEN}Memory profile saved to mem.prof${NC}"
     echo -e "${BLUE}To analyze: go tool pprof mem.prof${NC}"
 }
@@ -100,7 +100,7 @@ profile_memory() {
 # Function to profile CPU
 profile_cpu() {
     echo -e "${YELLOW}Profiling CPU usage...${NC}"
-    run_compose exec yapay-sdk-dev bash -c "cd /workspace/sdk && go test -cpuprofile=cpu.prof -bench=. ./..."
+    run_compose exec yapay-sdk-dev bash -c "cd /workspace && go test -cpuprofile=cpu.prof -bench=. ./..."
     echo -e "${GREEN}CPU profile saved to cpu.prof${NC}"
     echo -e "${BLUE}To analyze: go tool pprof cpu.prof${NC}"
 }
@@ -124,7 +124,7 @@ network_debug() {
             ;;
         2)
             echo -e "${YELLOW}Testing connectivity to Yapay server...${NC}"
-            run_compose exec yapay-sdk-dev curl -v http://yapay-server-dev:8082/api/v1/health || echo "Connection failed"
+            run_compose exec yapay-sdk-dev curl -v http://localhost:8080/api/v1/health || echo "Connection failed"
             ;;
         3)
             echo -e "${YELLOW}Monitoring network traffic...${NC}"
@@ -133,7 +133,7 @@ network_debug() {
             ;;
         4)
             echo -e "${YELLOW}Checking DNS resolution...${NC}"
-            run_compose exec yapay-sdk-dev nslookup yapay-server-dev
+            run_compose exec yapay-sdk-dev nslookup localhost
             ;;
         *)
             echo -e "${RED}Invalid option${NC}"

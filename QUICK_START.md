@@ -34,7 +34,6 @@ make test-plugins
 ```bash
 make check-compatibility        # Проверка готовности (умное определение окружения)
 make build-plugins             # Сборка всех плагинов из src/
-make build-examples            # Сборка примеров (для тестирования)
 make build-plugin-NAME         # Сборка конкретного плагина (умная сборка)
 make test                      # Тестирование
 make debug-plugin-NAME         # Отладка плагина

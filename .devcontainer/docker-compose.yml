@@ -1,6 +1,8 @@
 services:
   # Main development container for YAPAY SDK with integrated server
-  yapay-sdk-development:
+  yapay-sdk-dev:
+    image: metalmon/yapay:dev
+    # Fallback to local build if dev image is not available
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile.dev
