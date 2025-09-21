@@ -6,7 +6,7 @@ import (
 	"github.com/metalmon/yapay-sdk"
 )
 
-// MockClientHandler is a mock implementation of ClientHandler for testing
+// MockClientHandler is a mock implementation of PaymentEventHandler for testing
 type MockClientHandler struct {
 	Merchant             *yapay.Merchant
 	PaymentCreatedCalls  []*yapay.Payment
@@ -39,42 +39,42 @@ func (m *MockClientHandler) SetValidateRequestError(err error) {
 	m.ValidateRequestError = err
 }
 
-// HandlePaymentCreated records the call and returns nil
-func (m *MockClientHandler) HandlePaymentCreated(payment *yapay.Payment) error {
+// OnPaymentCreated records the call and returns nil
+func (m *MockClientHandler) OnPaymentCreated(payment *yapay.Payment) error {
 	m.PaymentCreatedCalls = append(m.PaymentCreatedCalls, payment)
 	return nil
 }
 
-// HandlePaymentSuccess records the call and returns nil
-func (m *MockClientHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
+// OnPaymentSuccess records the call and returns nil
+func (m *MockClientHandler) OnPaymentSuccess(payment *yapay.Payment) error {
 	m.PaymentSuccessCalls = append(m.PaymentSuccessCalls, payment)
 	return nil
 }
 
-// HandlePaymentFailed records the call and returns nil
-func (m *MockClientHandler) HandlePaymentFailed(payment *yapay.Payment) error {
+// OnPaymentFailed records the call and returns nil
+func (m *MockClientHandler) OnPaymentFailed(payment *yapay.Payment) error {
 	m.PaymentFailedCalls = append(m.PaymentFailedCalls, payment)
 	return nil
 }
 
-// HandlePaymentCanceled records the call and returns nil
-func (m *MockClientHandler) HandlePaymentCanceled(payment *yapay.Payment) error {
+// OnPaymentCanceled records the call and returns nil
+func (m *MockClientHandler) OnPaymentCanceled(payment *yapay.Payment) error {
 	m.PaymentCanceledCalls = append(m.PaymentCanceledCalls, payment)
 	return nil
 }
 
-// ValidateRequest records the call and returns the configured error
+// ValidateRequest records the call and returns the configured error (helper method for testing)
 func (m *MockClientHandler) ValidateRequest(req *yapay.PaymentRequest) error {
 	m.ValidateRequestCalls = append(m.ValidateRequestCalls, req)
 	return m.ValidateRequestError
 }
 
-// GetMerchantConfig returns the configured merchant
+// GetMerchantConfig returns the configured merchant (helper method for testing)
 func (m *MockClientHandler) GetMerchantConfig() *yapay.Merchant {
 	return m.Merchant
 }
 
-// GetMerchantID returns the merchant ID
+// GetMerchantID returns the merchant ID (helper method for testing)
 func (m *MockClientHandler) GetMerchantID() string {
 	if m.Merchant != nil {
 		return m.Merchant.Yandex.MerchantID
@@ -82,7 +82,7 @@ func (m *MockClientHandler) GetMerchantID() string {
 	return ""
 }
 
-// GetMerchantName returns the merchant name
+// GetMerchantName returns the merchant name (helper method for testing)
 func (m *MockClientHandler) GetMerchantName() string {
 	if m.Merchant != nil {
 		return m.Merchant.Name
@@ -90,12 +90,12 @@ func (m *MockClientHandler) GetMerchantName() string {
 	return ""
 }
 
-// GetPaymentLinkGenerator returns the configured generator
+// GetPaymentLinkGenerator returns the configured generator (helper method for testing)
 func (m *MockClientHandler) GetPaymentLinkGenerator() interface{} {
 	return m.PaymentGenerator
 }
 
-// SetPaymentLinkGenerator sets the payment generator
+// SetPaymentLinkGenerator sets the payment generator (helper method for testing)
 func (m *MockClientHandler) SetPaymentLinkGenerator(generator interface{}) {
 	if gen, ok := generator.(yapay.PaymentLinkGenerator); ok {
 		m.PaymentGenerator = gen
@@ -115,11 +115,11 @@ func (m *MockClientHandler) Reset() {
 // GetCallCounts returns the number of calls for each method
 func (m *MockClientHandler) GetCallCounts() map[string]int {
 	return map[string]int{
-		"HandlePaymentCreated":  len(m.PaymentCreatedCalls),
-		"HandlePaymentSuccess":  len(m.PaymentSuccessCalls),
-		"HandlePaymentFailed":   len(m.PaymentFailedCalls),
-		"HandlePaymentCanceled": len(m.PaymentCanceledCalls),
-		"ValidateRequest":       len(m.ValidateRequestCalls),
+		"OnPaymentCreated":  len(m.PaymentCreatedCalls),
+		"OnPaymentSuccess":  len(m.PaymentSuccessCalls),
+		"OnPaymentFailed":   len(m.PaymentFailedCalls),
+		"OnPaymentCanceled": len(m.PaymentCanceledCalls),
+		"ValidateRequest":   len(m.ValidateRequestCalls),
 	}
 }
 

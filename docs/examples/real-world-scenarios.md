@@ -63,7 +63,7 @@ type ProgrammingSchoolHandler struct {
 }
 
 // NewHandler создает новый обработчик
-func NewHandler(merchant *yapay.Merchant) yapay.ClientHandler {
+func NewHandler(merchant *yapay.Merchant) interface{} {
     return &ProgrammingSchoolHandler{
         merchant: merchant,
         logger:   logrus.New(),
@@ -80,45 +80,9 @@ func NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.
     }
 }
 
-// ValidateRequest валидирует запрос на создание платежа
-func (h *ProgrammingSchoolHandler) ValidateRequest(req *yapay.PaymentRequest) error {
-    h.logger.WithFields(logrus.Fields{
-        "amount":      req.Amount,
-        "description": req.Description,
-    }).Debug("Validating payment request")
-    
-    // Проверка обязательных полей
-    if req.Amount <= 0 {
-        return fmt.Errorf("amount must be positive, got: %d", req.Amount)
-    }
-    
-    if req.Description == "" {
-        return fmt.Errorf("description is required")
-    }
-    
-    // Проверка наличия course_id в метаданных
-    courseID, exists := req.Metadata["course_id"]
-    if !exists {
-        return fmt.Errorf("course_id is required in metadata")
-    }
-    
-    // Проверка существования курса
-    course, err := h.db.GetCourse(courseID.(string))
-    if err != nil {
-        return fmt.Errorf("course not found: %s", courseID)
-    }
-    
-    // Проверка цены курса
-    if req.Amount != course.Price {
-        return fmt.Errorf("price mismatch: expected %d, got %d", course.Price, req.Amount)
-    }
-    
-    h.logger.Info("Payment request validated successfully")
-    return nil
-}
 
-// HandlePaymentSuccess обрабатывает успешную оплату
-func (h *ProgrammingSchoolHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
+// OnPaymentSuccess обрабатывает успешную оплату
+func (h *ProgrammingSchoolHandler) OnPaymentSuccess(payment *yapay.Payment) error {
     h.logger.WithFields(logrus.Fields{
         "payment_id": payment.ID,
         "order_id":   payment.OrderID,
@@ -156,8 +120,8 @@ func (h *ProgrammingSchoolHandler) HandlePaymentSuccess(payment *yapay.Payment) 
     return nil
 }
 
-// HandlePaymentFailed обрабатывает неудачную оплату
-func (h *ProgrammingSchoolHandler) HandlePaymentFailed(payment *yapay.Payment) error {
+// OnPaymentFailed обрабатывает неудачную оплату
+func (h *ProgrammingSchoolHandler) OnPaymentFailed(payment *yapay.Payment) error {
     h.logger.WithFields(logrus.Fields{
         "payment_id": payment.ID,
         "order_id":   payment.OrderID,
@@ -169,35 +133,20 @@ func (h *ProgrammingSchoolHandler) HandlePaymentFailed(payment *yapay.Payment) e
     return nil
 }
 
-// Остальные методы ClientHandler...
-func (h *ProgrammingSchoolHandler) HandlePaymentCreated(payment *yapay.Payment) error {
+// Остальные методы PaymentEventHandler...
+func (h *ProgrammingSchoolHandler) OnPaymentCreated(payment *yapay.Payment) error {
     h.logger.WithField("payment_id", payment.ID).Info("Payment created")
     return nil
 }
 
-func (h *ProgrammingSchoolHandler) HandlePaymentCanceled(payment *yapay.Payment) error {
+func (h *ProgrammingSchoolHandler) OnPaymentCanceled(payment *yapay.Payment) error {
     h.logger.WithField("payment_id", payment.ID).Info("Payment canceled")
     return nil
 }
 
-func (h *ProgrammingSchoolHandler) GetMerchantConfig() *yapay.Merchant {
-    return h.merchant
-}
-
-func (h *ProgrammingSchoolHandler) GetMerchantID() string {
-    return h.merchant.ID
-}
-
-func (h *ProgrammingSchoolHandler) GetMerchantName() string {
-    return h.merchant.Name
-}
-
-func (h *ProgrammingSchoolHandler) GetPaymentLinkGenerator() interface{} {
-    return NewPaymentGenerator(h.merchant, h.logger)
-}
-
-func (h *ProgrammingSchoolHandler) SetPaymentLinkGenerator(generator interface{}) {
-    // Реализация по необходимости
+// Реализация интерфейса VersionedPlugin (обязательно)
+func (h *ProgrammingSchoolHandler) GetSDKVersion() string {
+    return yapay.GetSDKVersion()
 }
 
 // ProgrammingSchoolPaymentGenerator генерирует данные для платежей
@@ -387,62 +336,9 @@ const createPayment = async (courseId, userId, userEmail) => {
 ### Реализация
 
 ```go
-// ValidateRequest для магазина
-func (h *ShopHandler) ValidateRequest(req *yapay.PaymentRequest) error {
-    // Проверяем наличие товаров в корзине
-    items, exists := req.Metadata["items"]
-    if !exists {
-        return fmt.Errorf("items are required in metadata")
-    }
-    
-    itemsList, ok := items.([]map[string]interface{})
-    if !ok || len(itemsList) == 0 {
-        return fmt.Errorf("items list cannot be empty")
-    }
-    
-    // Проверяем каждый товар
-    totalAmount := 0
-    for _, item := range itemsList {
-        itemID, exists := item["id"]
-        if !exists {
-            return fmt.Errorf("item id is required")
-        }
-        
-        // Проверяем существование товара
-        product, err := h.db.GetProduct(itemID.(string))
-        if err != nil {
-            return fmt.Errorf("product not found: %s", itemID)
-        }
-        
-        // Проверяем количество
-        quantity, exists := item["quantity"]
-        if !exists {
-            return fmt.Errorf("quantity is required for item %s", itemID)
-        }
-        
-        quantityInt := int(quantity.(float64))
-        if quantityInt <= 0 {
-            return fmt.Errorf("quantity must be positive for item %s", itemID)
-        }
-        
-        // Проверяем наличие на складе
-        if product.Stock < quantityInt {
-            return fmt.Errorf("insufficient stock for item %s", itemID)
-        }
-        
-        totalAmount += product.Price * quantityInt
-    }
-    
-    // Проверяем общую сумму
-    if req.Amount != totalAmount {
-        return fmt.Errorf("total amount mismatch: expected %d, got %d", totalAmount, req.Amount)
-    }
-    
-    return nil
-}
 
-// HandlePaymentSuccess для магазина
-func (h *ShopHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
+// OnPaymentSuccess для магазина
+func (h *ShopHandler) OnPaymentSuccess(payment *yapay.Payment) error {
     items, exists := payment.Metadata["items"]
     if !exists {
         return fmt.Errorf("items not found in payment metadata")
@@ -494,8 +390,8 @@ func (h *ShopHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
 ### Реализация
 
 ```go
-// HandlePaymentSuccess для подписки
-func (h *SubscriptionHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
+// OnPaymentSuccess для подписки
+func (h *SubscriptionHandler) OnPaymentSuccess(payment *yapay.Payment) error {
     userID, exists := payment.Metadata["user_id"]
     if !exists {
         return fmt.Errorf("user_id not found in payment metadata")
@@ -548,7 +444,7 @@ func (h *SubscriptionHandler) HandlePaymentSuccess(payment *yapay.Payment) error
 Обработчики должны быть идемпотентными - повторный вызов с теми же данными не должен вызывать побочных эффектов:
 
 ```go
-func (h *MyHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
+func (h *MyHandler) OnPaymentSuccess(payment *yapay.Payment) error {
     // Проверяем, не обработан ли уже этот платеж
     if h.isPaymentProcessed(payment.ID) {
         h.logger.WithField("payment_id", payment.ID).Info("Payment already processed")
@@ -570,7 +466,7 @@ func (h *MyHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
 Всегда логируйте ошибки и возвращайте их с контекстом:
 
 ```go
-func (h *MyHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
+func (h *MyHandler) OnPaymentSuccess(payment *yapay.Payment) error {
     if err := h.processPayment(payment); err != nil {
         h.logger.WithFields(logrus.Fields{
             "payment_id": payment.ID,
@@ -586,18 +482,3 @@ func (h *MyHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
 
 Всегда валидируйте входящие данные:
 
-```go
-func (h *MyHandler) ValidateRequest(req *yapay.PaymentRequest) error {
-    // Проверка обязательных полей
-    if req.Amount <= 0 {
-        return fmt.Errorf("amount must be positive, got: %d", req.Amount)
-    }
-    
-    // Проверка бизнес-логики
-    if err := h.validateBusinessRules(req); err != nil {
-        return fmt.Errorf("business validation failed: %w", err)
-    }
-    
-    return nil
-}
-```

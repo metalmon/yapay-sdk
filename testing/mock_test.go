@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestMockClientHandlerImplementsInterface tests that MockClientHandler implements ClientHandler interface
+// TestMockClientHandlerImplementsInterface tests that MockClientHandler implements PaymentEventHandler interface
 func TestMockClientHandlerImplementsInterface(t *testing.T) {
-	// This test will fail at compile time if MockClientHandler doesn't implement ClientHandler
-	var handler yapay.ClientHandler = NewMockClientHandler()
+	// This test will fail at compile time if MockClientHandler doesn't implement PaymentEventHandler
+	var handler yapay.PaymentEventHandler = NewMockClientHandler()
 	assert.NotNil(t, handler)
 }
 
@@ -33,10 +33,10 @@ func TestMockClientHandlerMethods(t *testing.T) {
 	mock.SetMerchant(merchant)
 
 	// Test all methods
-	assert.NoError(t, mock.HandlePaymentCreated(payment))
-	assert.NoError(t, mock.HandlePaymentSuccess(payment))
-	assert.NoError(t, mock.HandlePaymentFailed(payment))
-	assert.NoError(t, mock.HandlePaymentCanceled(payment))
+	assert.NoError(t, mock.OnPaymentCreated(payment))
+	assert.NoError(t, mock.OnPaymentSuccess(payment))
+	assert.NoError(t, mock.OnPaymentFailed(payment))
+	assert.NoError(t, mock.OnPaymentCanceled(payment))
 	assert.NoError(t, mock.ValidateRequest(request))
 
 	// Test getters
@@ -51,10 +51,10 @@ func TestMockClientHandlerMethods(t *testing.T) {
 
 	// Test call counts
 	counts := mock.GetCallCounts()
-	assert.Equal(t, 1, counts["HandlePaymentCreated"])
-	assert.Equal(t, 1, counts["HandlePaymentSuccess"])
-	assert.Equal(t, 1, counts["HandlePaymentFailed"])
-	assert.Equal(t, 1, counts["HandlePaymentCanceled"])
+	assert.Equal(t, 1, counts["OnPaymentCreated"])
+	assert.Equal(t, 1, counts["OnPaymentSuccess"])
+	assert.Equal(t, 1, counts["OnPaymentFailed"])
+	assert.Equal(t, 1, counts["OnPaymentCanceled"])
 	assert.Equal(t, 1, counts["ValidateRequest"])
 }
 

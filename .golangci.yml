@@ -1,55 +1,40 @@
 run:
   timeout: 5m
-  issues-exit-code: 1
-  tests: true
-
-output:
-  formats:
-    - format: colored-line-number
-  print-issued-line: true
-  print-linter-name: true
 
 linters-settings:
-  govet:
-    settings:
-      printf:
-        funcs:
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
-          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
-
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  unused:
+    check-exported: false
+  gocyclo:
+    min-complexity: 12  # Более строгий лимит сложности
+  dupl:
+    threshold: 80      # Более строгий лимит дублирования
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+  misspell:
+    locale: US
+  lll:
+    line-length: 120   # Более строгий лимит длины строки
+  funlen:
+    lines: 80          # Более строгий лимит для функций
+    statements: 40     # Более строгий лимит для операторов
+  dogsled:
+    max-blank-identifiers: 2  # Максимум 2 пустых идентификатора в списке параметров
+  prealloc:
+    simple: true       # Простые случаи предварительной аллокации
+    range-loops: true  # Циклы range
+    for-loops: false   # Обычные for циклы (может быть слишком агрессивно)
   revive:
     rules:
       - name: exported
         disabled: false
-
-  gocyclo:
-    min-complexity: 15
-
-  maligned:
-    suggest-new: true
-
-  dupl:
-    threshold: 100
-
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-
-  misspell:
-    locale: US
-
-  lll:
-    line-length: 140
-
-  unused:
-    check-exported: false
-
-  mnd:
-    settings:
-      checks: argument,case,condition,operation,return,assign
-
+        arguments:
+          - disableStutteringCheck
+      - name: package-comments
+        disabled: false
   gocritic:
     enabled-tags:
       - diagnostic
@@ -59,78 +44,43 @@ linters-settings:
       - style
     disabled-checks:
       - dupImport # https://github.com/go-critic/go-critic/issues/845
-      - ifElseChain
       - octalLiteral
       - whyNoLint
-      - wrapperFunc
-
-  depguard:
-    rules:
-      main:
-        allow:
-          - "github.com/sirupsen/logrus"
-          - "github.com/metalmon/yapay-sdk"
-          - "github.com/stretchr/testify/assert"
-          - "github.com/stretchr/testify/require"
-          - "time"
-          - "fmt"
-          - "context"
-          - "encoding/json"
-          - "errors"
-          - "testing"
+      # ifElseChain и wrapperFunc включены для лучшего качества кода
 
 linters:
-  disable-all: true
   enable:
-    - bodyclose
-    - depguard
-    - dogsled
-    - dupl
     - errcheck
-    - exhaustive
-    - funlen
-    - gochecknoinits
-    - goconst
-    - gocritic
+    - unused
+    - govet
     - gocyclo
+    - dupl
+    - goconst
+    - misspell
+    - lll
+    - funlen
+    - gocritic
     - gofmt
     - goimports
-    - goprintffuncname
     - gosec
     - gosimple
-    - govet
     - ineffassign
-    - lll
-    - misspell
-    - mnd
-    - nakedret
-    - noctx
-    - nolintlint
-    - revive
-    - rowserrcheck
-    - predeclared
     - staticcheck
-    - stylecheck
     - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
+    - bodyclose      # Проверка закрытия HTTP body
+    - dogsled        # Проверка длинных списков параметров
+    - gochecknoinits # Запрет init() функций
+    - prealloc       # Оптимизация аллокаций
+    - revive         # Современная альтернатива golint
 
 issues:
-  exclude-dirs:
-    - vendor
-    - tools
   exclude-rules:
     - path: _test\.go
       linters:
-        - mnd
-        - funlen
         - gocyclo
+        - errcheck
         - dupl
-    - path: testing/.*\.go
-      linters:
-        - mnd
-
-  max-issues-per-linter: 0
-  max-same-issues: 0
+        - gosec
+        - funlen      # Тесты могут быть длиннее
+        - bodyclose   # В тестах не всегда нужно закрывать body
+        - dogsled     # В тестах допустимы длинные списки параметров

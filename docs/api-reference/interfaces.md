@@ -1,12 +1,12 @@
 # Справочник по интерфейсам SDK
 
-## ClientHandler
+## PaymentEventHandler
 
-Основной интерфейс для обработки платежей клиента.
+Основной интерфейс для обработки событий платежей.
 
 ### Методы
 
-#### HandlePaymentCreated(payment *Payment) error
+#### OnPaymentCreated(payment *Payment) error
 
 Вызывается при создании нового платежа.
 
@@ -15,7 +15,7 @@
 
 **Пример:**
 ```go
-func (h *MyHandler) HandlePaymentCreated(payment *yapay.Payment) error {
+func (h *MyHandler) OnPaymentCreated(payment *yapay.Payment) error {
     h.logger.WithFields(logrus.Fields{
         "payment_id": payment.ID,
         "amount":     payment.Amount,
@@ -27,7 +27,7 @@ func (h *MyHandler) HandlePaymentCreated(payment *yapay.Payment) error {
 }
 ```
 
-#### HandlePaymentSuccess(payment *Payment) error
+#### OnPaymentSuccess(payment *Payment) error
 
 Вызывается при успешной оплате.
 
@@ -36,7 +36,7 @@ func (h *MyHandler) HandlePaymentCreated(payment *yapay.Payment) error {
 
 **Пример:**
 ```go
-func (h *MyHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
+func (h *MyHandler) OnPaymentSuccess(payment *yapay.Payment) error {
     // Активация курса, отправка уведомлений и т.д.
     if err := h.activateCourse(payment); err != nil {
         return fmt.Errorf("failed to activate course: %w", err)
@@ -45,88 +45,20 @@ func (h *MyHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
 }
 ```
 
-#### HandlePaymentFailed(payment *Payment) error
+#### OnPaymentFailed(payment *Payment) error
 
 Вызывается при неудачной оплате.
 
 **Параметры:**
 - `payment` - объект платежа с статусом "failed"
 
-#### HandlePaymentCanceled(payment *Payment) error
+#### OnPaymentCanceled(payment *Payment) error
 
 Вызывается при отмене платежа.
 
 **Параметры:**
 - `payment` - объект платежа с статусом "canceled"
 
-#### ValidateRequest(req *PaymentRequest) error
-
-Валидирует входящий запрос на создание платежа.
-
-**Параметры:**
-- `req` - запрос на создание платежа
-
-**Возвращает:**
-- `error` - ошибка валидации или nil
-
-**Пример:**
-```go
-func (h *MyHandler) ValidateRequest(req *yapay.PaymentRequest) error {
-    // Проверка суммы
-    if req.Amount <= 0 {
-        return fmt.Errorf("amount must be positive, got: %d", req.Amount)
-    }
-    
-    // Проверка описания
-    if req.Description == "" {
-        return fmt.Errorf("description is required")
-    }
-    
-    // Проверка метаданных
-    if courseID, exists := req.Metadata["course_id"]; exists {
-        if courseID == "" {
-            return fmt.Errorf("course_id cannot be empty")
-        }
-    }
-    
-    return nil
-}
-```
-
-#### GetMerchantConfig() *Merchant
-
-Возвращает конфигурацию мерчанта.
-
-**Возвращает:**
-- `*Merchant` - объект конфигурации
-
-#### GetMerchantID() string
-
-Возвращает ID мерчанта.
-
-**Возвращает:**
-- `string` - ID мерчанта
-
-#### GetMerchantName() string
-
-Возвращает название мерчанта.
-
-**Возвращает:**
-- `string` - название мерчанта
-
-#### GetPaymentLinkGenerator() interface{}
-
-Возвращает генератор платежных ссылок.
-
-**Возвращает:**
-- `interface{}` - объект, реализующий PaymentLinkGenerator
-
-#### SetPaymentLinkGenerator(generator interface{})
-
-Устанавливает генератор платежных ссылок.
-
-**Параметры:**
-- `generator` - объект, реализующий PaymentLinkGenerator
 
 ## PaymentLinkGenerator
 
@@ -309,7 +241,7 @@ type PaymentRequest struct {
     Amount      int                    `json:"amount" yaml:"amount"`
     Currency    string                 `json:"currency" yaml:"currency"`
     Description string                 `json:"description" yaml:"description"`
-    ReturnURL   string                 `json:"return_url" yaml:"return_url"`
+    ReturnURL   string                 `json:"return_url" yaml:"return_url"` // May be optional - can be configured in merchant's personal account
     Metadata    map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
 ```
@@ -423,17 +355,7 @@ h.logger.WithFields(logrus.Fields{
 
 ### 3. Валидация
 
-Валидируйте данные на входе:
-
-```go
-func (h *MyHandler) ValidateRequest(req *yapay.PaymentRequest) error {
-    if req.Amount <= 0 {
-        return fmt.Errorf("amount must be positive, got: %d", req.Amount)
-    }
-    // ... другие проверки
-    return nil
-}
-```
+Валидация запросов теперь выполняется сервером автоматически. Плагины должны обрабатывать только события платежей через интерфейс `PaymentEventHandler`.
 
 ### 4. Безопасность
 

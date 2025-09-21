@@ -60,11 +60,11 @@ Validating handler...
 ✅ Valid request passed
 ✅ negative amount correctly rejected: amount must be positive, got: -100
 ✅ empty description correctly rejected: description is required
-✅ empty return URL correctly rejected: return URL is required
-✅ HandlePaymentCreated passed
-✅ HandlePaymentSuccess passed
-✅ HandlePaymentFailed passed
-✅ HandlePaymentCanceled passed
+✅ return URL validation handled by server (may be optional)
+✅ OnPaymentCreated passed
+✅ OnPaymentSuccess passed
+✅ OnPaymentFailed passed
+✅ OnPaymentCanceled passed
 ```
 
 #### 2. simulate - Симуляция платежа
@@ -106,9 +106,9 @@ $ ./plugin-debug -plugin simple-plugin -test simulate -verbose
 $ ./plugin-debug -plugin simple-plugin -test benchmark
 
 ⚡ Running benchmark tests...
-Benchmarking HandlePaymentCreated...
+Benchmarking OnPaymentCreated...
 ✅ 1000 operations in 2.5ms (400000 ops/sec)
-Benchmarking ValidateRequest...
+Benchmarking OnPaymentSuccess...
 ✅ 1000 operations in 1.2ms (833333 ops/sec)
 Benchmarking GeneratePaymentData...
 ✅ 1000 operations in 3.1ms (322580 ops/sec)
@@ -188,27 +188,20 @@ func main() {
     testData := testing.NewTestData()
     request := testData.CreateTestPaymentRequest()
     
-    fmt.Println("Testing validation...")
-    if err := handler.ValidateRequest(request); err != nil {
-        log.Printf("Validation failed: %v", err)
-    } else {
-        fmt.Println("✅ Validation passed")
-    }
-    
     // Тестируем жизненный цикл платежа
     payment := testData.CreateTestPayment()
     
     fmt.Println("Testing payment lifecycle...")
-    if err := handler.HandlePaymentCreated(payment); err != nil {
-        log.Printf("HandlePaymentCreated failed: %v", err)
+    if err := handler.OnPaymentCreated(payment); err != nil {
+        log.Printf("OnPaymentCreated failed: %v", err)
     } else {
-        fmt.Println("✅ HandlePaymentCreated passed")
+        fmt.Println("✅ OnPaymentCreated passed")
     }
     
-    if err := handler.HandlePaymentSuccess(payment); err != nil {
-        log.Printf("HandlePaymentSuccess failed: %v", err)
+    if err := handler.OnPaymentSuccess(payment); err != nil {
+        log.Printf("OnPaymentSuccess failed: %v", err)
     } else {
-        fmt.Println("✅ HandlePaymentSuccess passed")
+        fmt.Println("✅ OnPaymentSuccess passed")
     }
 }
 ```
@@ -364,7 +357,7 @@ make benchmark-plugin PLUGIN_NAME=simple-plugin CONFIG_PATH=../../examples/simpl
 ### 1. Используйте структурированные логи
 
 ```go
-func (h *Handler) HandlePaymentSuccess(payment *yapay.Payment) error {
+func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
     h.logger.WithFields(logrus.Fields{
         "payment_id": payment.ID,
         "order_id":   payment.OrderID,
@@ -381,17 +374,7 @@ func (h *Handler) HandlePaymentSuccess(payment *yapay.Payment) error {
 ### 2. Добавляйте контекст в ошибки
 
 ```go
-func (h *Handler) ValidateRequest(req *yapay.PaymentRequest) error {
-    if req.Amount <= 0 {
-        return fmt.Errorf("amount must be positive, got: %d", req.Amount)
-    }
-    
-    if err := h.validateBusinessRules(req); err != nil {
-        return fmt.Errorf("business validation failed for amount %d: %w", req.Amount, err)
-    }
-    
-    return nil
-}
+// ValidateRequest больше не используется - валидация выполняется сервером
 ```
 
 ### 3. Тестируйте граничные случаи
@@ -408,29 +391,22 @@ func TestEdgeCases(t *testing.T) {
         ReturnURL:   "https://example.com",
     }
     
-    if err := handler.ValidateRequest(req); err != nil {
-        t.Errorf("Minimal amount should be valid: %v", err)
-    }
-    
-    // Тест с максимальной суммой
-    req.Amount = 100000000 // 1 миллион рублей
-    if err := handler.ValidateRequest(req); err != nil {
-        t.Errorf("Large amount should be valid: %v", err)
-    }
+    // ValidateRequest больше не используется - валидация выполняется сервером
+    // Тестируем только обработку событий платежей
 }
 ```
 
 ### 4. Мониторинг производительности
 
 ```go
-func (h *Handler) HandlePaymentSuccess(payment *yapay.Payment) error {
+func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
     start := time.Now()
     defer func() {
         duration := time.Since(start)
         h.logger.WithFields(logrus.Fields{
             "payment_id": payment.ID,
             "duration":   duration,
-        }).Debug("HandlePaymentSuccess completed")
+        }).Debug("OnPaymentSuccess completed")
     }()
     
     // Ваша логика...

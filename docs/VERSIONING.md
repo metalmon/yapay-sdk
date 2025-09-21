@@ -11,7 +11,7 @@ SDK использует систему версионирования для о
 
 ## Текущая версия
 
-**Актуальная версия SDK: `v1.0.6`**
+**Актуальная версия SDK: `1.0.8`** (используйте `yapay.GetSDKVersion()` для получения версии в коде)
 
 ## Как это работает
 
@@ -29,7 +29,7 @@ type MyPlugin struct {
 
 // Обязательная реализация для версионирования
 func (p *MyPlugin) GetSDKVersion() string {
-    return "1.0.6"  // Версия SDK, против которой собран плагин
+    return yapay.GetSDKVersion()  // Используем метод SDK для получения версии
 }
 ```
 
@@ -45,20 +45,14 @@ func (p *MyPlugin) GetSDKVersion() string {
 
 Если плагин НЕ реализует `VersionedPlugin`:
 - Сервер выводит предупреждение в лог
-- Предполагает версию `1.0.6` по умолчанию
+- Предполагает версию `1.0.8` по умолчанию
 - Плагин продолжает работать нормально
 
 ## Поддерживаемые версии
 
 | SDK Версия | Статус | Совместимость |
 |------------|--------|---------------|
-| `1.0.6`    | ✅ Текущая | Полная |
-| `1.0.5`    | ✅ Поддерживается | Полная |
-| `1.0.4`    | ✅ Поддерживается | Полная |
-| `1.0.3`    | ✅ Поддерживается | Полная |
-| `1.0.2`    | ✅ Поддерживается | Полная |
-| `1.0.1`    | ✅ Поддерживается | Полная |
-| `1.0.0`    | ✅ Поддерживается | Полная |
+| `1.0.8`    | ✅ Текущая | Полная |
 | `1.1.0`    | 🔮 Планируется | Будущая |
 | `2.0.0`    | 🔮 Планируется | Breaking changes |
 
@@ -74,7 +68,8 @@ grep "github.com/metalmon/yapay-sdk" go.mod
 ```go
 import "github.com/metalmon/yapay-sdk"
 
-fmt.Println(yapay.SDKVersion)  // "1.0.6"
+fmt.Println(yapay.SDKVersion)  // "1.0.8" - константа
+fmt.Println(yapay.GetSDKVersion())  // "1.0.8" - рекомендуемый метод
 ```
 
 ## Мониторинг версий
@@ -91,19 +86,19 @@ curl http://localhost:8080/api/v1/health/plugin-versions
     {
       "name": "sample-plugin",
       "version": "1.0",
-      "sdk_version": "1.0.6",
+      "sdk_version": "1.0.8",
       "is_versioned": true
     }
   ],
-  "supported_sdk_versions": ["1.0.6", "1.1.0"],
-  "sdk_version": "1.0.6"
+  "supported_sdk_versions": ["1.0.8", "1.1.0"],
+  "sdk_version": "1.0.8"
 }
 ```
 
 ### Логи сервера
 ```
 time="2025-09-21T06:05:24+04:00" level=info msg="Plugin SDK version detected" 
-  client_id=sample-plugin plugin_version=1.0 sdk_version=1.0.6 is_versioned=true
+  client_id=sample-plugin plugin_version=1.0 sdk_version=1.0.8 is_versioned=true
 ```
 
 ## Рекомендации для разработчиков
@@ -123,7 +118,7 @@ time="2025-09-21T06:05:24+04:00" level=info msg="Plugin SDK version detected"
 #### Правильная реализация
 ```go
 func (p *MyPlugin) GetSDKVersion() string {
-    return "1.0.6"  // Точная версия из go.mod
+    return yapay.GetSDKVersion()  // Используем метод SDK для получения версии
 }
 ```
 
@@ -132,7 +127,7 @@ func (p *MyPlugin) GetSDKVersion() string {
 func (p *MyPlugin) GetSDKVersion() string {
     return "latest"     // ❌ Неопределенная версия
     return "1.0"        // ❌ Неточная версия
-    return "v1.0.6"     // ❌ Лишний префикс "v"
+    return "v1.0.8"     // ❌ Лишний префикс "v"
 }
 ```
 
@@ -142,7 +137,7 @@ func (p *MyPlugin) GetSDKVersion() string {
 ```go
 // Добавить к существующему плагину
 func (p *OldPlugin) GetSDKVersion() string {
-    return "1.0.6"  // Версия SDK, которую использует плагин
+    return yapay.GetSDKVersion()  // Используем метод SDK для получения версии
 }
 ```
 
@@ -179,7 +174,7 @@ error="plugin SDK version 2.0.0 is not yet supported"
 
 ### Проблема: Плагин не сообщает версию
 ```
-level=warning msg="Plugin does not implement VersionedPlugin interface, assuming SDK version 1.0.6"
+level=warning msg="Plugin does not implement VersionedPlugin interface, assuming SDK version 1.0.8"
 ```
 
 **Решение**: Добавить реализацию `GetSDKVersion()` в плагин.

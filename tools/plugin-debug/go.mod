@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.0
 
 require (
-	github.com/metalmon/yapay-sdk v1.0.6
+	github.com/metalmon/yapay-sdk v1.0.7
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -14,4 +14,4 @@ require (
 	golang.org/x/sys v0.15.0 // indirect
 )
 
-// replace github.com/metalmon/yapay-sdk => ../..
+// No replace directive needed - using published version

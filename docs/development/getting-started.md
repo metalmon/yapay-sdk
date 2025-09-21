@@ -23,9 +23,9 @@ my-plugin/
 
 ```go
 // NewHandler создает обработчик клиента
-func NewHandler(merchant *yapay.Merchant) yapay.ClientHandler
+func NewHandler(merchant *yapay.Merchant) interface{}
 
-// NewPaymentGenerator создает генератор платежных данных
+// NewPaymentGenerator создает генератор платежных данных (опционально)
 func NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.PaymentLinkGenerator
 ```
 
@@ -53,14 +53,14 @@ import (
     "github.com/sirupsen/logrus"
 )
 
-// MyPluginHandler реализует интерфейс ClientHandler
+// MyPluginHandler реализует интерфейсы PaymentEventHandler и VersionedPlugin
 type MyPluginHandler struct {
     merchant *yapay.Merchant
     logger   *logrus.Logger
 }
 
 // NewHandler создает новый обработчик клиента
-func NewHandler(merchant *yapay.Merchant) yapay.ClientHandler {
+func NewHandler(merchant *yapay.Merchant) interface{} {
     return &MyPluginHandler{
         merchant: merchant,
         logger:   logrus.New(),
@@ -75,8 +75,8 @@ func NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.
     }
 }
 
-// Реализация методов ClientHandler
-func (h *MyPluginHandler) HandlePaymentCreated(payment *yapay.Payment) error {
+// Реализация методов PaymentEventHandler
+func (h *MyPluginHandler) OnPaymentCreated(payment *yapay.Payment) error {
     h.logger.WithFields(logrus.Fields{
         "payment_id": payment.ID,
         "amount":     payment.Amount,
@@ -84,7 +84,7 @@ func (h *MyPluginHandler) HandlePaymentCreated(payment *yapay.Payment) error {
     return nil
 }
 
-func (h *MyPluginHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
+func (h *MyPluginHandler) OnPaymentSuccess(payment *yapay.Payment) error {
     h.logger.WithFields(logrus.Fields{
         "payment_id": payment.ID,
         "amount":     payment.Amount,
@@ -92,7 +92,7 @@ func (h *MyPluginHandler) HandlePaymentSuccess(payment *yapay.Payment) error {
     return nil
 }
 
-func (h *MyPluginHandler) HandlePaymentFailed(payment *yapay.Payment) error {
+func (h *MyPluginHandler) OnPaymentFailed(payment *yapay.Payment) error {
     h.logger.WithFields(logrus.Fields{
         "payment_id": payment.ID,
         "amount":     payment.Amount,
@@ -100,7 +100,7 @@ func (h *MyPluginHandler) HandlePaymentFailed(payment *yapay.Payment) error {
     return nil
 }
 
-func (h *MyPluginHandler) HandlePaymentCanceled(payment *yapay.Payment) error {
+func (h *MyPluginHandler) OnPaymentCanceled(payment *yapay.Payment) error {
     h.logger.WithFields(logrus.Fields{
         "payment_id": payment.ID,
         "amount":     payment.Amount,
@@ -108,35 +108,9 @@ func (h *MyPluginHandler) HandlePaymentCanceled(payment *yapay.Payment) error {
     return nil
 }
 
-func (h *MyPluginHandler) ValidateRequest(req *yapay.PaymentRequest) error {
-    // Валидация запроса
-    if req.Amount <= 0 {
-        return fmt.Errorf("amount must be positive")
-    }
-    if req.Description == "" {
-        return fmt.Errorf("description is required")
-    }
-    return nil
-}
-
-func (h *MyPluginHandler) GetMerchantConfig() *yapay.Merchant {
-    return h.merchant
-}
-
-func (h *MyPluginHandler) GetMerchantID() string {
-    return h.merchant.ID
-}
-
-func (h *MyPluginHandler) GetMerchantName() string {
-    return h.merchant.Name
-}
-
-func (h *MyPluginHandler) GetPaymentLinkGenerator() interface{} {
-    return NewPaymentGenerator(h.merchant, h.logger)
-}
-
-func (h *MyPluginHandler) SetPaymentLinkGenerator(generator interface{}) {
-    // Реализация по необходимости
+// Реализация интерфейса VersionedPlugin (обязательно)
+func (h *MyPluginHandler) GetSDKVersion() string {
+    return yapay.GetSDKVersion()
 }
 ```
 

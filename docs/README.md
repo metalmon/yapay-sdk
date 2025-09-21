@@ -97,7 +97,7 @@
 ```go
 // Обязательная реализация для версионирования
 func (p *MyPlugin) GetSDKVersion() string {
-    return "1.0.6"  // Версия SDK, против которой собран плагин
+    return yapay.GetSDKVersion()  // Используем метод SDK для получения версии
 }
 ```
 

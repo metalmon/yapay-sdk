@@ -13,6 +13,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plugin development tools and examples
 - Comprehensive documentation
 
+## [1.0.8] - 2025-09-21
+
+### Changed
+
+- Updated `ClientHandler` interface to `PaymentEventHandler` for better clarity
+- Renamed payment event methods:
+  - `HandlePaymentCreated` → `OnPaymentCreated`
+  - `HandlePaymentSuccess` → `OnPaymentSuccess`
+  - `HandlePaymentFailed` → `OnPaymentFailed`
+  - `HandlePaymentCanceled` → `OnPaymentCanceled`
+- Removed deprecated methods from `PaymentEventHandler`:
+  - `ValidateRequest` (now handled by server)
+  - `GetMerchantConfig`, `GetMerchantID`, `GetMerchantName` (moved to server)
+  - `GetPaymentLinkGenerator`, `SetPaymentLinkGenerator` (no longer needed)
+
+### Updated
+
+- All documentation updated to reflect new interface structure
+- Examples and templates updated to use new method names
+- Version references updated throughout documentation
+
 ## [1.0.0] - 2025-09-15
 
 ### Added

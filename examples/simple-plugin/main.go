@@ -10,13 +10,13 @@ import (
 
 // Handler represents a simple plugin handler
 type Handler struct {
-	merchant  *yapay.Merchant
-	logger    *logrus.Logger
-	generator yapay.PaymentLinkGenerator
+	merchant *yapay.Merchant
+	logger   *logrus.Logger
+	// generator field removed as it's not used in PaymentEventHandler interface
 }
 
 // NewHandler creates a new handler (required function)
-func NewHandler(merchant *yapay.Merchant) yapay.ClientHandler {
+func NewHandler(merchant *yapay.Merchant) interface{} {
 	logger := logrus.New()
 	logger.WithFields(logrus.Fields{
 		"merchant_id": merchant.Yandex.MerchantID,
@@ -29,8 +29,8 @@ func NewHandler(merchant *yapay.Merchant) yapay.ClientHandler {
 	}
 }
 
-// HandlePaymentCreated handles payment creation
-func (h *Handler) HandlePaymentCreated(payment *yapay.Payment) error {
+// OnPaymentCreated handles payment creation (implements PaymentEventHandler)
+func (h *Handler) OnPaymentCreated(payment *yapay.Payment) error {
 	h.logger.WithFields(logrus.Fields{
 		"payment_id":  payment.ID,
 		"order_id":    payment.OrderID,
@@ -45,8 +45,8 @@ func (h *Handler) HandlePaymentCreated(payment *yapay.Payment) error {
 	return nil
 }
 
-// HandlePaymentSuccess handles successful payment
-func (h *Handler) HandlePaymentSuccess(payment *yapay.Payment) error {
+// OnPaymentSuccess handles successful payment (implements PaymentEventHandler)
+func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
 	h.logger.WithFields(logrus.Fields{
 		"payment_id": payment.ID,
 		"order_id":   payment.OrderID,
@@ -59,8 +59,8 @@ func (h *Handler) HandlePaymentSuccess(payment *yapay.Payment) error {
 	return nil
 }
 
-// HandlePaymentFailed handles failed payment
-func (h *Handler) HandlePaymentFailed(payment *yapay.Payment) error {
+// OnPaymentFailed handles failed payment (implements PaymentEventHandler)
+func (h *Handler) OnPaymentFailed(payment *yapay.Payment) error {
 	h.logger.WithFields(logrus.Fields{
 		"payment_id": payment.ID,
 		"order_id":   payment.OrderID,
@@ -73,8 +73,8 @@ func (h *Handler) HandlePaymentFailed(payment *yapay.Payment) error {
 	return nil
 }
 
-// HandlePaymentCanceled handles canceled payment
-func (h *Handler) HandlePaymentCanceled(payment *yapay.Payment) error {
+// OnPaymentCanceled handles canceled payment (implements PaymentEventHandler)
+func (h *Handler) OnPaymentCanceled(payment *yapay.Payment) error {
 	h.logger.WithFields(logrus.Fields{
 		"payment_id": payment.ID,
 		"order_id":   payment.OrderID,
@@ -86,57 +86,9 @@ func (h *Handler) HandlePaymentCanceled(payment *yapay.Payment) error {
 	return nil
 }
 
-// ValidateRequest validates payment request
-func (h *Handler) ValidateRequest(req *yapay.PaymentRequest) error {
-	if req.Amount <= 0 {
-		return fmt.Errorf("amount must be positive, got: %d", req.Amount)
-	}
-
-	if req.Description == "" {
-		return fmt.Errorf("description is required")
-	}
-
-	if req.ReturnURL == "" {
-		return fmt.Errorf("return URL is required")
-	}
-
-	// Example: Validate against your business rules
-	// Check if amount is within limits, etc.
-
-	h.logger.WithFields(logrus.Fields{
-		"amount":      req.Amount,
-		"currency":    req.Currency,
-		"description": req.Description,
-	}).Debug("Payment request validated")
-
-	return nil
-}
-
-// GetMerchantConfig returns merchant configuration
-func (h *Handler) GetMerchantConfig() *yapay.Merchant {
-	return h.merchant
-}
-
-// GetMerchantID returns merchant ID
-func (h *Handler) GetMerchantID() string {
-	return h.merchant.Yandex.MerchantID
-}
-
-// GetMerchantName returns merchant name
-func (h *Handler) GetMerchantName() string {
-	return h.merchant.Name
-}
-
-// GetPaymentLinkGenerator returns payment link generator
-func (h *Handler) GetPaymentLinkGenerator() interface{} {
-	return h.generator
-}
-
-// SetPaymentLinkGenerator sets payment link generator
-func (h *Handler) SetPaymentLinkGenerator(generator interface{}) {
-	if gen, ok := generator.(yapay.PaymentLinkGenerator); ok {
-		h.generator = gen
-	}
+// GetSDKVersion returns the SDK version this plugin was built against (implements VersionedPlugin)
+func (h *Handler) GetSDKVersion() string {
+	return yapay.GetSDKVersion()
 }
 
 // Example of how to implement payment link generation
@@ -166,7 +118,7 @@ func (g *PaymentGenerator) GeneratePaymentData(req *yapay.PaymentRequest) (*yapa
 	// Prepare payment data for Yandex Pay
 	paymentData := map[string]interface{}{
 		"amount": map[string]interface{}{
-			"value":    fmt.Sprintf("%.2f", float64(req.Amount)/100),
+			"value":    fmt.Sprintf("%.2f", float64(req.Amount)/100.0), //nolint:mnd // Convert kopecks to rubles
 			"currency": req.Currency,
 		},
 		"confirmation": map[string]interface{}{
@@ -228,7 +180,7 @@ func (g *PaymentGenerator) GetPaymentSettings() *yapay.PaymentSettings {
 	return &yapay.PaymentSettings{
 		Currency:           g.merchant.Yandex.Currency,
 		SandboxMode:        g.merchant.Yandex.SandboxMode,
-		AutoConfirmTimeout: 30, // 30 seconds for testing
+		AutoConfirmTimeout: 30, //nolint:mnd // 30 seconds for testing
 		CustomFields: map[string]interface{}{
 			"merchant_name": g.merchant.Name,
 			"domain":        g.merchant.Domain,

@@ -5,69 +5,47 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"plugin"
-	"strings"
-	"time"
 
 	"github.com/metalmon/yapay-sdk"
 	"github.com/metalmon/yapay-sdk/testing"
 	"gopkg.in/yaml.v3"
 )
 
-// loadPlugin loads a plugin using the same logic as the main application
-func loadPlugin(name, pluginsDir string) (*plugin.Plugin, error) {
-	// Try subdirectory first, then root for legacy support
-	pluginPath := filepath.Join(pluginsDir, name, name+".so")
-	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
-		pluginPath = filepath.Join(pluginsDir, name+".so")
-		if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
-			return nil, fmt.Errorf("plugin file not found: %s", name)
-		}
-	}
-
-	fmt.Printf("Loading plugin from: %s\n", pluginPath)
-	p, err := plugin.Open(pluginPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open plugin %s: %w", name, err)
-	}
-
-	return p, nil
-}
-
 func main() {
 	var (
-		pluginName = flag.String("plugin", "", "Plugin name (e.g., swschool)")
-		configPath = flag.String("config", "", "Path to plugin config.yaml")
-		testMode   = flag.String("test", "", "Test mode: validate, simulate, benchmark")
-		verbose    = flag.Bool("verbose", false, "Verbose output")
-		pluginsDir = flag.String("plugins-dir", "plugins", "Plugins directory")
+		pluginPath = flag.String("plugin", "", "Path to plugin file (.so)")
+		configPath = flag.String("config", "", "Path to YAML config file")
+		verbose    = flag.Bool("verbose", false, "Enable verbose output")
+		help       = flag.Bool("help", false, "Show help")
 	)
 	flag.Parse()
 
-	if *pluginName == "" {
-		fmt.Println("Usage: plugin-debug -plugin <plugin-name> [-config <path/to/config.yaml>] [-test <mode>] [-plugins-dir <dir>]")
-		fmt.Println("Test modes: validate, simulate, benchmark")
-		fmt.Println("Example: plugin-debug -plugin swschool -test validate")
-		os.Exit(1)
+	if *help {
+		showHelp()
+		return
 	}
 
-	// Load plugin using the same logic as main application
-	fmt.Printf("Loading plugin: %s\n", *pluginName)
-	p, err := loadPlugin(*pluginName, *pluginsDir)
+	if *pluginPath == "" {
+		log.Fatal("Plugin path is required. Use -plugin flag.")
+	}
+
+	// Load plugin
+	fmt.Printf("Loading plugin: %s\n", *pluginPath)
+	p, err := plugin.Open(*pluginPath)
 	if err != nil {
 		log.Fatalf("Failed to load plugin: %v", err)
 	}
 
-	// Look for NewHandler function
+	// Look up NewHandler function
 	newHandlerSym, err := p.Lookup("NewHandler")
 	if err != nil {
 		log.Fatalf("Plugin does not export NewHandler function: %v", err)
 	}
 
-	newHandler, ok := newHandlerSym.(func(*yapay.Merchant) yapay.ClientHandler)
+	newHandler, ok := newHandlerSym.(func(*yapay.Merchant) interface{})
 	if !ok {
-		log.Fatalf("NewHandler has wrong signature: expected func(*yapay.Merchant) yapay.ClientHandler")
+		log.Fatalf("NewHandler has wrong signature: expected func(*yapay.Merchant) interface{}")
 	}
 
 	// Load config if provided
@@ -79,10 +57,10 @@ func main() {
 			log.Fatalf("Failed to load config: %v", err)
 		}
 	} else {
-		// Use test data
-		fmt.Println("Using test merchant configuration")
+		// Create test merchant
 		testData := testing.NewTestData()
 		merchant = testData.CreateTestMerchant()
+		fmt.Println("Using test merchant configuration")
 	}
 
 	// Create handler
@@ -94,238 +72,119 @@ func main() {
 	if err := validateHandler(handler); err != nil {
 		log.Fatalf("Handler validation failed: %v", err)
 	}
-	fmt.Println("✅ Handler validation passed")
 
-	// Run tests based on mode
-	switch *testMode {
-	case "validate":
-		runValidationTests(handler, *verbose)
-	case "simulate":
-		runSimulationTests(handler, *verbose)
-	case "benchmark":
-		runBenchmarkTests(handler, *verbose)
-	default:
-		fmt.Println("No test mode specified. Use -test validate|simulate|benchmark")
+	fmt.Println("✅ Plugin loaded and validated successfully!")
+
+	// Run tests if verbose
+	if *verbose {
+		runTests(handler)
 	}
 }
 
-func loadConfig(configPath string) (*yapay.Merchant, error) {
-	// Validate config path to prevent path traversal attacks
-	if !filepath.IsAbs(configPath) {
-		configPath = filepath.Clean(configPath)
-		// Allow relative paths that don't go up directories
-		if strings.Contains(configPath, "..") && !strings.HasPrefix(configPath, "../") {
-			return nil, fmt.Errorf("invalid config path: path traversal detected")
-		}
-	}
+func showHelp() {
+	fmt.Printf("Plugin Debug Tool - YAPAY SDK v%s\n", yapay.GetSDKVersion())
+	fmt.Println("")
+	fmt.Println("Usage:")
+	fmt.Println("  plugin-debug -plugin <plugin.so> [-config <config.yaml>] [-verbose]")
+	fmt.Println("")
+	fmt.Println("Options:")
+	fmt.Println("  -plugin string")
+	fmt.Println("        Path to plugin file (.so)")
+	fmt.Println("  -config string")
+	fmt.Println("        Path to YAML config file")
+	fmt.Println("  -verbose")
+	fmt.Println("        Enable verbose output and run tests")
+	fmt.Println("  -help")
+	fmt.Println("        Show this help message")
+	fmt.Println("")
+	fmt.Println("Examples:")
+	fmt.Println("  plugin-debug -plugin ./my-plugin.so")
+	fmt.Println("  plugin-debug -plugin ./my-plugin.so -config ./config.yaml -verbose")
+}
 
+func loadConfig(configPath string) (*yapay.Merchant, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, fmt.Errorf("failed to read config file: %v", err)
 	}
 
 	var merchant yapay.Merchant
 	if err := yaml.Unmarshal(data, &merchant); err != nil {
-		return nil, fmt.Errorf("failed to parse YAML config: %w", err)
+		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
 
 	return &merchant, nil
 }
 
-func validateHandler(handler yapay.ClientHandler) error {
-	// Check required methods
-	if handler.GetMerchantConfig() == nil {
-		return fmt.Errorf("GetMerchantConfig() returned nil")
+func validateHandler(handler interface{}) error {
+	// Check if handler implements PaymentEventHandler interface
+	if _, ok := handler.(yapay.PaymentEventHandler); !ok {
+		return fmt.Errorf("handler does not implement PaymentEventHandler interface")
 	}
 
-	if handler.GetMerchantID() == "" {
-		return fmt.Errorf("GetMerchantID() returned empty string")
+	// Check if handler implements VersionedPlugin interface
+	if _, ok := handler.(yapay.VersionedPlugin); !ok {
+		return fmt.Errorf("handler does not implement VersionedPlugin interface")
 	}
 
-	if handler.GetMerchantName() == "" {
-		return fmt.Errorf("GetMerchantName() returned empty string")
+	// Test version reporting
+	versionedHandler := handler.(yapay.VersionedPlugin)
+	sdkVersion := versionedHandler.GetSDKVersion()
+	if sdkVersion == "" {
+		return fmt.Errorf("GetSDKVersion() returned empty string")
 	}
 
-	// Test ValidateRequest with valid data
-	testData := testing.NewTestData()
-	validRequest := testData.CreateTestPaymentRequest()
-	if err := handler.ValidateRequest(validRequest); err != nil {
-		return fmt.Errorf("ValidateRequest failed with valid data: %v", err)
-	}
+	fmt.Printf("✅ Handler reports SDK version: %s\n", sdkVersion)
 
 	return nil
 }
 
-func runValidationTests(handler yapay.ClientHandler, verbose bool) {
-	fmt.Println("\n🧪 Running validation tests...")
+func runTests(handler interface{}) {
+	fmt.Println("\n🧪 Running tests...")
 
-	testData := testing.NewTestData()
-
-	// Test valid payment request
-	validRequest := testData.CreateTestPaymentRequest()
-	if err := handler.ValidateRequest(validRequest); err != nil {
-		fmt.Printf("❌ Valid request failed: %v\n", err)
+	// Test interface implementations
+	if _, ok := handler.(yapay.PaymentEventHandler); ok {
+		fmt.Println("✅ PaymentEventHandler interface implemented")
 	} else {
-		fmt.Println("✅ Valid request passed")
+		fmt.Println("❌ PaymentEventHandler interface not implemented")
 	}
 
-	// Test invalid payment requests
-	invalidRequests := []struct {
-		name    string
-		request *yapay.PaymentRequest
-	}{
-		{
-			name: "negative amount",
-			request: &yapay.PaymentRequest{
-				Amount:      -100,
-				Description: "Test",
-				ReturnURL:   "https://example.com",
-			},
-		},
-		{
-			name: "empty description",
-			request: &yapay.PaymentRequest{
-				Amount:      1000,
-				Description: "",
-				ReturnURL:   "https://example.com",
-			},
-		},
-		{
-			name: "empty return URL",
-			request: &yapay.PaymentRequest{
-				Amount:      1000,
-				Description: "Test",
-				ReturnURL:   "",
-			},
-		},
+	if _, ok := handler.(yapay.VersionedPlugin); ok {
+		fmt.Println("✅ VersionedPlugin interface implemented")
+	} else {
+		fmt.Println("❌ VersionedPlugin interface not implemented")
 	}
 
-	for _, test := range invalidRequests {
-		if err := handler.ValidateRequest(test.request); err != nil {
-			if verbose {
-				fmt.Printf("✅ %s correctly rejected: %v\n", test.name, err)
-			}
-		} else {
-			fmt.Printf("❌ %s should have been rejected\n", test.name)
-		}
-	}
-
-	// Test payment lifecycle
-	payment := testData.CreateTestPayment()
-	lifecycleTests := []struct {
-		name string
-		fn   func(*yapay.Payment) error
-	}{
-		{"HandlePaymentCreated", handler.HandlePaymentCreated},
-		{"HandlePaymentSuccess", handler.HandlePaymentSuccess},
-		{"HandlePaymentFailed", handler.HandlePaymentFailed},
-		{"HandlePaymentCanceled", handler.HandlePaymentCanceled},
-	}
-
-	for _, test := range lifecycleTests {
-		if err := test.fn(payment); err != nil {
-			fmt.Printf("❌ %s failed: %v\n", test.name, err)
-		} else {
-			if verbose {
-				fmt.Printf("✅ %s passed\n", test.name)
-			}
-		}
-	}
-}
-
-func runSimulationTests(handler yapay.ClientHandler, verbose bool) {
-	fmt.Println("\n🎭 Running simulation tests...")
-
+	// Test payment event handlers
+	fmt.Println("\n🎭 Testing payment event handlers...")
 	testData := testing.NewTestData()
 	payment := testData.CreateTestPayment()
 
-	// Simulate payment flow
-	fmt.Println("1. Payment created...")
-	if err := handler.HandlePaymentCreated(payment); err != nil {
-		fmt.Printf("❌ Payment creation failed: %v\n", err)
-		return
+	eventHandler := handler.(yapay.PaymentEventHandler)
+
+	if err := eventHandler.OnPaymentCreated(payment); err != nil {
+		fmt.Printf("❌ OnPaymentCreated failed: %v\n", err)
+	} else {
+		fmt.Println("✅ OnPaymentCreated passed")
 	}
 
-	// Simulate delay
-	if verbose {
-		fmt.Println("   Waiting 100ms...")
-		time.Sleep(100 * time.Millisecond)
+	if err := eventHandler.OnPaymentSuccess(payment); err != nil {
+		fmt.Printf("❌ OnPaymentSuccess failed: %v\n", err)
+	} else {
+		fmt.Println("✅ OnPaymentSuccess passed")
 	}
 
-	// Simulate successful payment
-	payment.Status = "success"
-	fmt.Println("2. Payment successful...")
-	if err := handler.HandlePaymentSuccess(payment); err != nil {
-		fmt.Printf("❌ Payment success handling failed: %v\n", err)
-		return
+	if err := eventHandler.OnPaymentFailed(payment); err != nil {
+		fmt.Printf("❌ OnPaymentFailed failed: %v\n", err)
+	} else {
+		fmt.Println("✅ OnPaymentFailed passed")
 	}
 
-	fmt.Println("✅ Payment simulation completed successfully")
-
-	// Test payment generator if available
-	generator := handler.GetPaymentLinkGenerator()
-	if generator != nil {
-		fmt.Println("\n🔗 Testing payment generator...")
-		if paymentGen, ok := generator.(yapay.PaymentLinkGenerator); ok {
-			request := testData.CreateTestPaymentRequest()
-
-			fmt.Println("   Generating payment data...")
-			result, err := paymentGen.GeneratePaymentData(request)
-			if err != nil {
-				fmt.Printf("❌ Payment data generation failed: %v\n", err)
-			} else {
-				fmt.Printf("✅ Payment data generated: OrderID=%s, Amount=%d\n", result.OrderID, result.Amount)
-			}
-
-			fmt.Println("   Getting payment settings...")
-			settings := paymentGen.GetPaymentSettings()
-			if settings != nil {
-				fmt.Printf("✅ Payment settings: Currency=%s, Sandbox=%v\n", settings.Currency, settings.SandboxMode)
-			}
-		}
+	if err := eventHandler.OnPaymentCanceled(payment); err != nil {
+		fmt.Printf("❌ OnPaymentCanceled failed: %v\n", err)
+	} else {
+		fmt.Println("✅ OnPaymentCanceled passed")
 	}
-}
 
-func runBenchmarkTests(handler yapay.ClientHandler, _ bool) {
-	fmt.Println("\n⚡ Running benchmark tests...")
-
-	testData := testing.NewTestData()
-	payment := testData.CreateTestPayment()
-	request := testData.CreateTestPaymentRequest()
-
-	// Benchmark payment creation
-	fmt.Println("Benchmarking HandlePaymentCreated...")
-	start := time.Now()
-	iterations := 1000
-	for i := 0; i < iterations; i++ {
-		_ = handler.HandlePaymentCreated(payment)
-	}
-	duration := time.Since(start)
-	opsPerSec := float64(iterations) / duration.Seconds()
-	fmt.Printf("✅ %d operations in %v (%.0f ops/sec)\n", iterations, duration, opsPerSec)
-
-	// Benchmark validation
-	fmt.Println("Benchmarking ValidateRequest...")
-	start = time.Now()
-	for i := 0; i < iterations; i++ {
-		_ = handler.ValidateRequest(request)
-	}
-	duration = time.Since(start)
-	opsPerSec = float64(iterations) / duration.Seconds()
-	fmt.Printf("✅ %d operations in %v (%.0f ops/sec)\n", iterations, duration, opsPerSec)
-
-	// Benchmark payment generator if available
-	generator := handler.GetPaymentLinkGenerator()
-	if generator != nil {
-		if paymentGen, ok := generator.(yapay.PaymentLinkGenerator); ok {
-			fmt.Println("Benchmarking GeneratePaymentData...")
-			start = time.Now()
-			for i := 0; i < iterations; i++ {
-				_, _ = paymentGen.GeneratePaymentData(request)
-			}
-			duration = time.Since(start)
-			opsPerSec = float64(iterations) / duration.Seconds()
-			fmt.Printf("✅ %d operations in %v (%.0f ops/sec)\n", iterations, duration, opsPerSec)
-		}
-	}
+	fmt.Println("\n✅ All tests completed!")
 }

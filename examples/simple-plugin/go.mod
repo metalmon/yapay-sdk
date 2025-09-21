@@ -3,7 +3,7 @@ module simple-plugin
 go 1.22.0
 
 require (
-	github.com/metalmon/yapay-sdk v1.0.6
+	github.com/metalmon/yapay-sdk v1.0.7
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
 )
@@ -15,4 +15,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// replace github.com/metalmon/yapay-sdk => ../..
+// No replace directive needed - using published version

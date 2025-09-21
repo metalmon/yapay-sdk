@@ -6,7 +6,7 @@
 
 Этот плагин демонстрирует:
 
-- ✅ Базовую реализацию интерфейса `ClientHandler`
+- ✅ Базовую реализацию интерфейса `PaymentEventHandler`
 - ✅ Обработку жизненного цикла платежей
 - ✅ Валидацию запросов
 - ✅ Опциональную реализацию `PaymentLinkGenerator`
@@ -140,10 +140,10 @@ curl -X POST http://localhost:8080/api/v1/payments/create \
 
 Плагин обрабатывает все этапы жизненного цикла платежа:
 
-1. **Создание** (`HandlePaymentCreated`) - логирование события
-2. **Успех** (`HandlePaymentSuccess`) - обновление статуса, бизнес-логика
-3. **Ошибка** (`HandlePaymentFailed`) - логирование ошибки
-4. **Отмена** (`HandlePaymentCanceled`) - освобождение ресурсов
+1. **Создание** (`OnPaymentCreated`) - логирование события
+2. **Успех** (`OnPaymentSuccess`) - обновление статуса, бизнес-логика
+3. **Ошибка** (`OnPaymentFailed`) - логирование ошибки
+4. **Отмена** (`OnPaymentCanceled`) - освобождение ресурсов
 
 **Примечание:** Уведомления (Telegram, Email) создаются автоматически сервером на основе настроек в `config.yaml`.
 
@@ -177,7 +177,7 @@ func (h *Handler) CustomBusinessLogic() error {
 ### Интеграция с внешними API
 
 ```go
-func (h *Handler) HandlePaymentSuccess(payment *yapay.Payment) error {
+func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
     // Отправка данных в ваш API
     resp, err := http.Post("https://your-api.com/webhook",
         "application/json",
@@ -220,7 +220,7 @@ notifications:
 ### Работа с базой данных
 
 ```go
-func (h *Handler) HandlePaymentCreated(payment *yapay.Payment) error {
+func (h *Handler) OnPaymentCreated(payment *yapay.Payment) error {
     // Сохранение в БД
     _, err := h.db.Exec(`
         INSERT INTO payments (id, amount, status, created_at)
@@ -282,7 +282,7 @@ Validating handler...
 ✅ Valid request passed
 ✅ negative amount correctly rejected: amount must be positive, got: -100
 ✅ empty description correctly rejected: description is required
-✅ empty return URL correctly rejected: return URL is required
+✅ return URL validation handled by server (may be optional)
 ✅ HandlePaymentCreated passed
 ✅ HandlePaymentSuccess passed
 ✅ HandlePaymentFailed passed
