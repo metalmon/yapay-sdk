@@ -37,7 +37,6 @@
         "ms-vscode.vscode-json",
         "redhat.vscode-yaml",
         "ms-vscode.vscode-docker",
-        "ms-kubernetes-tools.vscode-kubernetes-tools",
         "ms-vscode.makefile-tools",
         "github.vscode-pull-request-github",
         "ms-vscode.vscode-github-issue-notebooks",
@@ -52,7 +51,7 @@
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally
-  "forwardPorts": [8080, 8081, 8083, 2345],
+  "forwardPorts": [8080, 8083, 2345],
 
   // Use 'postCreateCommand' to run commands after the container is created
   "postCreateCommand": "echo 'YAPAY SDK Devcontainer created successfully'",
