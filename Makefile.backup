@@ -1,36 +1,13 @@
 # YAPAY SDK Makefile
 # Provides consistent plugin building using the same builder image as the main yapay project
 
-.PHONY: help show-env build-plugins build-plugin-% clean check-compatibility test test-plugins test-tools build-tools tunnel tunnel-start tunnel-stop tunnel-status tunnel-url debug-plugin debug-plugin-% tools build-plugin-debug plugin-list plugin-reload plugin-refresh-dirs update-builder fmt lint lint-fix security check
+.PHONY: help build-plugins build-plugin-% clean check-compatibility test test-plugins test-tools build-tools tunnel tunnel-start tunnel-stop tunnel-status tunnel-url debug-plugin debug-plugin-% tools build-plugin-debug plugin-list plugin-reload plugin-refresh-dirs update-builder fmt lint lint-fix security check
 
 # Configuration
 OUTPUT_DIR := plugins
 TOOLS_DIR := tools
 DOCKER_IMAGE := metalmon/yapay
 BUILDER_TAG := builder
-
-# Universal Environment Detection and Path Configuration
-# Automatically detects environment: devcontainer, container, or host
-DETECT_ENV := $(shell if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then echo "devcontainer"; elif [ -f /.dockerenv ]; then echo "container"; else echo "host"; fi)
-
-# Universal workspace path - always use /workspace for consistency across all environments
-WORKSPACE_PATH := /workspace
-DOCKER_VOLUME := $(PWD):$(WORKSPACE_PATH)
-DOCKER_WORKDIR := $(WORKSPACE_PATH)
-
-# Builder dependencies path (from builder image - always /app)
-BUILDER_DEPS_PATH := /app
-
-# Environment-specific configurations
-ifeq ($(DETECT_ENV),devcontainer)
-	# Running in devcontainer - direct build available, no Docker needed
-	BUILD_MODE := direct
-	ENV_INFO := "Alpine devcontainer - direct build "
-else
-	# Running on host or in other container - use Docker builder
-	BUILD_MODE := docker
-	ENV_INFO := "Host/Container - Docker builder "
-endif
 
 # Colors
 GREEN := \033[0;32m
@@ -42,23 +19,9 @@ NC := \033[0m # No Color
 # Default target
 .DEFAULT_GOAL := help
 
-# Show environment information
-show-env:
-	@printf "$(GREEN)Environment Detection:$(NC)\n"
-	@printf "  Detected: $(DETECT_ENV)\n"
-	@printf "  Build Mode: $(BUILD_MODE)\n"
-	@printf "  Info: $(ENV_INFO)\n"
-	@printf "  Workspace: $(WORKSPACE_PATH)\n"
-	@printf "  Docker Volume: $(DOCKER_VOLUME)\n"
-	@printf "  Builder Deps: $(BUILDER_DEPS_PATH)\n"
-	@printf "  Current PWD: $(PWD)\n"
-
 # Show help
 help:
 	@echo "$(GREEN)YAPAY SDK Development Tools$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Environment:$(NC)"
-	@echo "  show-env             - Show environment detection and configuration"
 	@echo ""
 	@echo "$(YELLOW)Plugin management:$(NC)"
 	@echo "  new-plugin-NAME      - Create new plugin from template (auto-replaces all template strings)"
@@ -125,124 +88,79 @@ help:
 	@echo "  make lint-fix        # Auto-fix formatting and linting"
 	@echo "  make check           # Full quality check"
 
-# Build all plugins using universal builder (works in all environments)
+# Build all plugins from src/ directory only
 build-plugins:
-	@printf "$(GREEN)Building plugins using universal builder...$(NC)\n"
-	@printf "$(BLUE)Environment: $(ENV_INFO)$(NC)\n"
-	@if [ "$(BUILD_MODE)" = "direct" ]; then \
-		printf "$(YELLOW)Direct build in devcontainer...$(NC)\n"; \
-		mkdir -p $(OUTPUT_DIR) && \
+	@printf "$(BLUE)--- Building all plugins using official builder ---$(NC)\n"
+	@if ! docker image inspect $(DOCKER_IMAGE):$(BUILDER_TAG) >/dev/null 2>&1; then \
+		printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
+		docker pull $(DOCKER_IMAGE):$(BUILDER_TAG) || \
+		(printf "$(RED)Failed to pull builder image. Please ensure it's available:$(NC)\n"; \
+		 printf "$(YELLOW)  docker pull $(DOCKER_IMAGE):$(BUILDER_TAG)$(NC)\n"; \
+		 exit 1); \
+	fi; \
+	printf "$(YELLOW)Compiling all plugins inside the builder container...$(NC)\n"; \
+	docker run --rm \
+		-v $(PWD):/workspace \
+		-w /workspace \
+		-e GOPRIVATE=github.com/metalmon/yapay-sdk \
+		-e GOCACHE=/tmp/go-build \
+		-u $(shell id -u):$(shell id -g) \
+		$(DOCKER_IMAGE):$(BUILDER_TAG) \
+		sh -c 'mkdir -p plugins && \
 		for plugin_dir in src/*; do \
 			if [ -d "$$plugin_dir" ] && [ -f "$$plugin_dir/go.mod" ]; then \
 				plugin_name=$$(basename "$$plugin_dir"); \
 				printf "Building plugin: $$plugin_name\n"; \
-				mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+				mkdir -p plugins/$$plugin_name; \
 				rm -f "$$plugin_dir/$$plugin_name.so"; \
-				(cd "$$plugin_dir" && cp $(BUILDER_DEPS_PATH)/go.mod . && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+				(cd "$$plugin_dir" && cp /app/go.mod . && cp /app/go.sum . && cp -r /app/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
 					-mod=vendor \
 					-buildmode=plugin \
 					-buildvcs=false \
 					-ldflags="-w -s" \
 					-o $$plugin_name.so \
 					.); \
-				cp "$$plugin_dir/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
+				cp "$$plugin_dir/$$plugin_name.so" plugins/$$plugin_name/; \
 				if [ -f "$$plugin_dir/config.yaml" ]; then \
-					cp "$$plugin_dir/config.yaml" $(OUTPUT_DIR)/$$plugin_name/; \
+					cp "$$plugin_dir/config.yaml" plugins/$$plugin_name/; \
 				fi; \
 				printf "Plugin $$plugin_name built successfully!\n"; \
 			fi; \
-		done; \
-	else \
-		printf "$(YELLOW)Docker build mode...$(NC)\n"; \
-		if ! docker image inspect $(DOCKER_IMAGE):$(BUILDER_TAG) >/dev/null 2>&1; then \
-			printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
-			docker pull $(DOCKER_IMAGE):$(BUILDER_TAG) || \
-			(printf "$(RED)Failed to pull builder image. Please ensure it's available:$(NC)\n"; \
-			 printf "$(YELLOW)  docker pull $(DOCKER_IMAGE):$(BUILDER_TAG)$(NC)\n"; \
-			 exit 1); \
-		fi; \
-		printf "$(YELLOW)Compiling all plugins inside the builder container...$(NC)\n"; \
-		docker run --rm \
-			-v $(DOCKER_VOLUME) \
-			-w $(DOCKER_WORKDIR) \
-			-e GOPRIVATE=github.com/metalmon/yapay-sdk \
-			-e GOCACHE=/tmp/go-build \
-			-u $(shell id -u):$(shell id -g) \
-			$(DOCKER_IMAGE):$(BUILDER_TAG) \
-			sh -c 'mkdir -p $(OUTPUT_DIR) && \
-			for plugin_dir in src/*; do \
-				if [ -d "$$plugin_dir" ] && [ -f "$$plugin_dir/go.mod" ]; then \
-					plugin_name=$$(basename "$$plugin_dir"); \
-					printf "Building plugin: $$plugin_name\n"; \
-					mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
-					rm -f "$$plugin_dir/$$plugin_name.so"; \
-					(cd "$$plugin_dir" && cp $(BUILDER_DEPS_PATH)/go.mod . && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
-						-mod=vendor \
-						-buildmode=plugin \
-						-buildvcs=false \
-						-ldflags="-w -s" \
-						-o $$plugin_name.so \
-						.); \
-					cp "$$plugin_dir/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
-					if [ -f "$$plugin_dir/config.yaml" ]; then \
-						cp "$$plugin_dir/config.yaml" $(OUTPUT_DIR)/$$plugin_name/; \
-					fi; \
-					printf "Plugin $$plugin_name built successfully!\n"; \
-				fi; \
-			done'; \
-	fi; \
+		done'; \
 	printf "$(GREEN)All plugins built successfully!$(NC)\n"
 
 
-# Build individual plugin using universal builder (works in all environments)
+# Build individual plugin using official builder
 build-plugin-%:
 	@plugin_name=$*; \
-	printf "$(GREEN)Building plugin: $$plugin_name using universal builder$(NC)\n"; \
-	printf "$(BLUE)Environment: $(ENV_INFO)$(NC)\n"; \
-	if [ "$(BUILD_MODE)" = "direct" ]; then \
-		printf "$(YELLOW)Direct build in devcontainer...$(NC)\n"; \
-		(cd "src/$$plugin_name" && cp $(BUILDER_DEPS_PATH)/go.mod . && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+	printf "$(GREEN)Building plugin: $$plugin_name using official builder$(NC)\n"; \
+	if ! docker image inspect $(DOCKER_IMAGE):$(BUILDER_TAG) >/dev/null 2>&1; then \
+		printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
+		docker pull $(DOCKER_IMAGE):$(BUILDER_TAG) || \
+		(printf "$(RED)Failed to pull builder image. Please ensure it's available:$(NC)\n"; \
+		 printf "$(YELLOW)  docker pull $(DOCKER_IMAGE):$(BUILDER_TAG)$(NC)\n"; \
+		 printf "$(YELLOW)  or build it locally: cd ../yapay && make docker-build-builder$(NC)\n"; \
+		 exit 1); \
+	fi; \
+	printf "$(YELLOW)Compiling plugin $$plugin_name inside the builder container...$(NC)\n"; \
+	docker run --rm \
+		-v $(PWD):/workspace \
+		-w /workspace/src/$$plugin_name \
+		-e GOPRIVATE=github.com/metalmon/yapay-sdk \
+		-e GOCACHE=/tmp/go-build \
+		-u $(shell id -u):$(shell id -g) \
+		$(DOCKER_IMAGE):$(BUILDER_TAG) \
+		sh -c 'cp /app/go.mod . && cp /app/go.sum . && cp -r /app/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
 			-mod=vendor \
 			-buildmode=plugin \
 			-buildvcs=false \
 			-ldflags="-w -s" \
-			-o $$plugin_name.so \
-			.); \
-		mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
-		cp "src/$$plugin_name/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
-		if [ -f "src/$$plugin_name/config.yaml" ]; then \
-			cp "src/$$plugin_name/config.yaml" $(OUTPUT_DIR)/$$plugin_name/; \
-		fi; \
-	else \
-		printf "$(YELLOW)Docker build mode...$(NC)\n"; \
-		if ! docker image inspect $(DOCKER_IMAGE):$(BUILDER_TAG) >/dev/null 2>&1; then \
-			printf "$(YELLOW)Builder image not found locally, pulling from registry...$(NC)\n"; \
-			docker pull $(DOCKER_IMAGE):$(BUILDER_TAG) || \
-			(printf "$(RED)Failed to pull builder image. Please ensure it's available:$(NC)\n"; \
-			 printf "$(YELLOW)  docker pull $(DOCKER_IMAGE):$(BUILDER_TAG)$(NC)\n"; \
-			 printf "$(YELLOW)  or build it locally: cd ../yapay && make docker-build-builder$(NC)\n"; \
-			 exit 1); \
-		fi; \
-		printf "$(YELLOW)Compiling plugin $$plugin_name inside the builder container...$(NC)\n"; \
-		docker run --rm \
-			-v $(DOCKER_VOLUME) \
-			-w $(DOCKER_WORKDIR)/src/$$plugin_name \
-			-e GOPRIVATE=github.com/metalmon/yapay-sdk \
-			-e GOCACHE=/tmp/go-build \
-			-u $(shell id -u):$(shell id -g) \
-			$(DOCKER_IMAGE):$(BUILDER_TAG) \
-			sh -c 'cp $(BUILDER_DEPS_PATH)/go.mod . && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
-				-mod=vendor \
-				-buildmode=plugin \
-				-buildvcs=false \
-				-ldflags="-w -s" \
-				-o '$$plugin_name'.so \
-				.'; \
-		mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
-		cp "src/$$plugin_name/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
-		if [ -f "src/$$plugin_name/config.yaml" ]; then \
-			cp "src/$$plugin_name/config.yaml" $(OUTPUT_DIR)/$$plugin_name/; \
-		fi; \
+			-o '$$plugin_name'.so \
+			.'; \
+	mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
+	cp "src/$$plugin_name/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
+	if [ -f "src/$$plugin_name/config.yaml" ]; then \
+		cp "src/$$plugin_name/config.yaml" $(OUTPUT_DIR)/$$plugin_name/; \
 	fi; \
 	printf "$(GREEN)Plugin $$plugin_name built successfully!$(NC)\n"
 
