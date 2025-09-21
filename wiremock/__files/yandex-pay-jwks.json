@@ -1,0 +1,13 @@
+{
+  "keys": [
+    {
+      "kty": "EC",
+      "kid": "sandbox-key-1",
+      "use": "sig",
+      "crv": "P-256",
+      "x": "test-x-coordinate",
+      "y": "test-y-coordinate",
+      "alg": "ES256"
+    }
+  ]
+}

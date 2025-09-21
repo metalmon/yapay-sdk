@@ -1,0 +1,30 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/payments",
+    "headers": {
+      "Content-Type": {
+        "matches": "application/json"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "status": "success",
+      "data": {
+        "payment_id": "{{randomValue length=32 type='ALPHANUMERIC'}}",
+        "status": "pending",
+        "payment_url": "https://sandbox.pay.yandex.ru/pay/{{randomValue length=32 type='ALPHANUMERIC'}}",
+        "amount": "{{jsonPath request.body '$.amount.value'}}",
+        "currency": "{{jsonPath request.body '$.amount.currency'}}",
+        "description": "{{jsonPath request.body '$.metadata.description'}}",
+        "created_at": "{{now format='yyyy-MM-ddTHH:mm:ss.SSSZ'}}",
+        "expires_at": "{{now format='yyyy-MM-ddTHH:mm:ss.SSSZ' offset='+30 minutes'}}"
+      }
+    }
+  }
+}

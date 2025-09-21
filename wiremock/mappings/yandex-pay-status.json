@@ -1,0 +1,27 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/v1/payments/([a-zA-Z0-9]+)"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "status": "success",
+      "data": {
+        "payment_id": "{{request.pathSegments.[1]}}",
+        "status": "succeeded",
+        "amount": {
+          "value": "100.00",
+          "currency": "RUB"
+        },
+        "description": "Test payment",
+        "created_at": "{{now format='yyyy-MM-ddTHH:mm:ss.SSSZ' offset='-5 minutes'}}",
+        "updated_at": "{{now format='yyyy-MM-ddTHH:mm:ss.SSSZ'}}",
+        "paid": true
+      }
+    }
+  }
+}
