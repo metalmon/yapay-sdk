@@ -1,7 +1,7 @@
 # YAPAY SDK Makefile
 # Provides consistent plugin building using the same builder image as the main yapay project
 
-.PHONY: help build-plugins build-plugin-% clean check-compatibility test test-plugins test-tools build-tools tunnel tunnel-start tunnel-stop tunnel-status tunnel-url debug-plugin debug-plugin-% tools build-plugin-debug plugin-list plugin-reload plugin-refresh-dirs update-builder
+.PHONY: help build-plugins build-plugin-% clean check-compatibility test test-plugins test-tools build-tools tunnel tunnel-start tunnel-stop tunnel-status tunnel-url debug-plugin debug-plugin-% tools build-plugin-debug plugin-list plugin-reload plugin-refresh-dirs update-builder fmt lint lint-fix security check
 
 # Configuration
 OUTPUT_DIR := plugins
@@ -35,6 +35,13 @@ help:
 	@echo "  test                 - Run all tests (plugins + tools)"
 	@echo "  test-plugins         - Test all plugins"
 	@echo "  test-tools           - Test all tools"
+	@echo ""
+	@echo "$(YELLOW)Code Quality:$(NC)"
+	@echo "  fmt                  - Format code with imports management"
+	@echo "  lint                 - Simple linter check (as in CI)"
+	@echo "  lint-fix             - Automatic formatting fix + linter check"
+	@echo "  security             - Run security scan"
+	@echo "  check                - Full check (format + lint-fix + test + security)"
 	@echo ""
 	@echo "$(YELLOW)Tools:$(NC)"
 	@echo "  build-tools          - Build all development tools"
@@ -75,6 +82,11 @@ help:
 	@echo "  make test"
 	@echo "  make debug-plugin-my-plugin"
 	@echo "  make tunnel-start"
+	@echo ""
+	@echo "$(BLUE)Code Quality Examples:$(NC)"
+	@echo "  make lint            # Simple linter check"
+	@echo "  make lint-fix        # Auto-fix formatting and linting"
+	@echo "  make check           # Full quality check"
 
 # Build all plugins from src/ directory only
 build-plugins:
@@ -462,4 +474,44 @@ update-dev-image:
 	@printf "$(BLUE)Updating development image...$(NC)\n"
 	@chmod +x ./scripts/update-dev-image.sh
 	@./scripts/update-dev-image.sh
+
+# Format code with imports management
+fmt:
+	@printf "$(GREEN)Formatting code...$(NC)\n"
+	@if ! command -v goimports >/dev/null 2>&1; then \
+		printf "$(YELLOW)Installing goimports...$(NC)\n"; \
+		go install golang.org/x/tools/cmd/goimports@v0.20.0; \
+	fi
+	go fmt ./...
+	goimports -w .
+	@printf "$(GREEN)Code formatting completed!$(NC)\n"
+
+# Lint code with auto-fix formatting
+lint: fmt
+	@printf "$(GREEN)Linting code...$(NC)\n"
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.3; \
+	fi
+	golangci-lint run --timeout=5m
+	@printf "$(GREEN)Linting completed!$(NC)\n"
+
+# Lint with auto-fix (fixes what can be fixed automatically)
+lint-fix: fmt
+	@printf "$(GREEN)Linting code with auto-fix...$(NC)\n"
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.3; \
+	fi
+	golangci-lint run --timeout=5m --fix
+	@printf "$(GREEN)Linting with auto-fix completed!$(NC)\n"
+
+# Security scan
+security:
+	@printf "$(GREEN)Running security scan...$(NC)\n"
+	gosec ./...
+
+# Check all (format, lint-fix, test, security)
+check: lint-fix test security
+	@printf "$(GREEN)All checks passed!$(NC)\n"
 

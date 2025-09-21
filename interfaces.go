@@ -95,27 +95,6 @@ type EmailConfig struct {
 	From     string `json:"from" yaml:"from"`
 }
 
-// ClientHandler defines the interface that all client handlers must implement
-type ClientHandler interface {
-	// Payment lifecycle methods
-	HandlePaymentCreated(payment *Payment) error
-	HandlePaymentSuccess(payment *Payment) error
-	HandlePaymentFailed(payment *Payment) error
-	HandlePaymentCanceled(payment *Payment) error
-
-	// Request validation
-	ValidateRequest(req *PaymentRequest) error
-
-	// Configuration and metadata
-	GetMerchantConfig() *Merchant
-	GetMerchantID() string
-	GetMerchantName() string
-
-	// Payment link generator
-	GetPaymentLinkGenerator() interface{}
-	SetPaymentLinkGenerator(generator interface{})
-}
-
 // PaymentLinkGenerator defines the interface for payment link generation
 type PaymentLinkGenerator interface {
 	GeneratePaymentData(req *PaymentRequest) (*PaymentGenerationResult, error)
@@ -143,66 +122,36 @@ type PaymentSettings struct {
 	CustomFields       map[string]interface{} `json:"custom_fields,omitempty"`
 }
 
-// NewHandlerFunc is the function signature for creating a new handler
-// This function must be exported from the plugin as "NewHandler"
-type NewHandlerFunc func(*Merchant) ClientHandler
+// PaymentEventHandler defines the interface for handling payment events
+// This interface allows plugins to implement custom business logic for payment lifecycle events
+type PaymentEventHandler interface {
+	// OnPaymentCreated is called when a payment is created
+	OnPaymentCreated(payment *Payment) error
+
+	// OnPaymentSuccess is called when a payment succeeds
+	OnPaymentSuccess(payment *Payment) error
+
+	// OnPaymentFailed is called when a payment fails
+	OnPaymentFailed(payment *Payment) error
+
+	// OnPaymentCanceled is called when a payment is canceled
+	OnPaymentCanceled(payment *Payment) error
+}
 
 // NewPaymentGeneratorFunc is the function signature for creating a payment generator
 // This function must be exported from the plugin as "NewPaymentGenerator"
 type NewPaymentGeneratorFunc func(*Merchant, *logrus.Logger) PaymentLinkGenerator
 
-// PaymentWebhook represents a webhook from Yandex Payment API
-// Based on https://pay.yandex.ru/docs/ru/custom/backend/merchant-api/webhook
-type PaymentWebhook struct {
-	Event        string                   `json:"event" yaml:"event"`
-	EventTime    string                   `json:"eventTime" yaml:"eventTime"`
-	MerchantID   string                   `json:"merchantId" yaml:"merchantId"`
-	Operation    *OperationWebhookData    `json:"operation,omitempty" yaml:"operation,omitempty"`
-	Order        *OrderWebhookData        `json:"order,omitempty" yaml:"order,omitempty"`
-	Subscription *SubscriptionWebhookData `json:"subscription,omitempty" yaml:"subscription,omitempty"`
+// NewPaymentEventHandlerFunc is the function signature for creating a payment event handler
+// This function must be exported from the plugin as "NewPaymentEventHandler"
+type NewPaymentEventHandlerFunc func(*Merchant, *logrus.Logger) PaymentEventHandler
+
+// NewHandlerFunc is the function signature for creating a plugin handler
+// This function must be exported from the plugin as "NewHandler"
+type NewHandlerFunc func(*Merchant, *logrus.Logger) interface{}
+
+// VersionedPlugin represents a plugin that can report its SDK version
+type VersionedPlugin interface {
+	// GetSDKVersion returns the SDK version this plugin was built against
+	GetSDKVersion() string
 }
-
-// OperationWebhookData represents operation information in webhook payload
-type OperationWebhookData struct {
-	OperationID         string `json:"operationId" yaml:"operationId"`
-	OperationType       string `json:"operationType" yaml:"operationType"`
-	OrderID             string `json:"orderId" yaml:"orderId"`
-	Status              string `json:"status" yaml:"status"`
-	ExternalOperationID string `json:"externalOperationId,omitempty" yaml:"externalOperationId,omitempty"`
-}
-
-// OrderWebhookData represents order information in webhook payload
-type OrderWebhookData struct {
-	OrderID        string `json:"orderId" yaml:"orderId"`
-	CartUpdated    bool   `json:"cartUpdated" yaml:"cartUpdated"`
-	DeliveryStatus string `json:"deliveryStatus,omitempty" yaml:"deliveryStatus,omitempty"`
-	PaymentStatus  string `json:"paymentStatus" yaml:"paymentStatus"`
-}
-
-// SubscriptionWebhookData represents subscription information in webhook payload
-type SubscriptionWebhookData struct {
-	CustomerSubscriptionID string `json:"customerSubscriptionId" yaml:"customerSubscriptionId"`
-	NextWriteOff           string `json:"nextWriteOff,omitempty" yaml:"nextWriteOff,omitempty"`
-	Status                 string `json:"status" yaml:"status"`
-	SubscriptionPlanID     string `json:"subscriptionPlanId" yaml:"subscriptionPlanId"`
-}
-
-// NotificationRequest represents a request to send a notification
-type NotificationRequest struct {
-	Type      NotificationType       `json:"type" yaml:"type"`
-	ClientID  string                 `json:"client_id" yaml:"client_id"`
-	PaymentID string                 `json:"payment_id,omitempty" yaml:"payment_id,omitempty"`
-	Message   string                 `json:"message" yaml:"message"`
-	Data      map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
-}
-
-// NotificationType represents the type of notification
-type NotificationType string
-
-const (
-	NotificationTypePaymentCreated NotificationType = "payment_created"
-	NotificationTypePaymentSuccess NotificationType = "payment_success"
-	NotificationTypePaymentFailed  NotificationType = "payment_failed"
-	NotificationTypeSystemError    NotificationType = "system_error"
-	NotificationTypeWebhook        NotificationType = "webhook"
-)

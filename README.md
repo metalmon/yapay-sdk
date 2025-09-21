@@ -55,6 +55,7 @@ make test-plugins           # Протестировать
 - 🔄 **[Workflow разработки](docs/development/workflow.md)** - Процесс разработки плагинов
 - 🐳 **[DevContainer](docs/development/dev-container.md)** - Среда разработки
 - 💡 **[Примеры](examples/)** - Готовые шаблоны плагинов
+- 🏷️ **[Версионирование SDK](docs/VERSIONING.md)** - Система версий и совместимость
 
 ## 🛠️ Основные команды
 

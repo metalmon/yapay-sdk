@@ -84,9 +84,22 @@
 ## 📋 Что нужно знать
 
 ### Обязательные функции
-Каждый плагин должен экспортировать две функции:
-- `NewHandler(merchant *yapay.Merchant) yapay.ClientHandler`
-- `NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.PaymentLinkGenerator`
+Каждый плагин должен экспортировать функции:
+- `NewHandler(merchant *yapay.Merchant, logger *logrus.Logger) interface{}` - создает плагин, реализующий оба интерфейса
+- `NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.PaymentLinkGenerator` - для обратной совместимости
+
+### Интерфейсы плагина
+Плагин должен реализовывать интерфейсы:
+- **PaymentLinkGenerator** - генерация данных платежа и валидация
+- **PaymentEventHandler** - обработка событий жизненного цикла платежей
+- **VersionedPlugin** (опционально) - сообщение версии SDK для совместимости
+
+```go
+// Обязательная реализация для версионирования
+func (p *MyPlugin) GetSDKVersion() string {
+    return "1.0.6"  // Версия SDK, против которой собран плагин
+}
+```
 
 ### Конфигурация
 Плагин настраивается через файл `config.yaml` с обязательными полями:

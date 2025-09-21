@@ -67,11 +67,11 @@ RUN echo "Installing Go development tools..." && \
     go version && \
     go env GOPROXY && \
     go env GOSUMDB && \
-    (go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || echo "golangci-lint installation failed") && \
-    (go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest || echo "gosec installation failed") && \
+    (go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.3 || echo "golangci-lint installation failed") && \
+    (go install github.com/securego/gosec/v2/cmd/gosec@v2.19.0 || echo "gosec installation failed") && \
     (go install github.com/go-delve/delve/cmd/dlv@latest || echo "delve installation failed") && \
     (go install github.com/air-verse/air@latest || echo "air installation failed") && \
-    (go install golang.org/x/tools/cmd/goimports@latest || echo "goimports installation failed") && \
+    (go install golang.org/x/tools/cmd/goimports@v0.20.0 || echo "goimports installation failed") && \
     echo "Go tools installation completed"
 
 # Copy and build YAPAY server binary for local development
