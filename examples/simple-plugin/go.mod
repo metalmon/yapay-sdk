@@ -1,6 +1,6 @@
 module simple-plugin
 
-go 1.22.0
+go 1.24
 
 require (
 	github.com/metalmon/yapay-sdk v1.0.9

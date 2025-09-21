@@ -1,8 +1,8 @@
 module plugin-debug
 
-go 1.22
+go 1.24
 
-toolchain go1.22.0
+toolchain go1.24.7
 
 require (
 	github.com/metalmon/yapay-sdk v1.0.9
