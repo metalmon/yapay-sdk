@@ -104,5 +104,5 @@ make tunnel-start             # Туннель для webhook'ов
 [![GitHub stars](https://img.shields.io/github/stars/metalmon/yapay-sdk?style=social)](https://github.com/metalmon/yapay-sdk)
 [![GitHub forks](https://img.shields.io/github/forks/metalmon/yapay-sdk?style=social)](https://github.com/metalmon/yapay-sdk)
 
-**Версия**: 1.0.6 | **Статус**: ✅ Готов к использованию
+**Версия**: 1.0.7 | **Статус**: ✅ Готов к использованию
 </div>
