@@ -50,10 +50,16 @@ jobs:
     
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.0
+      env:
+        SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        PLUGINS_PATH: ${{ secrets.PLUGINS_PATH }}
+        PLUGINS_USER: ${{ secrets.PLUGINS_USER }}
       with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
+        host: ${{ env.SERVER_HOST }}
+        username: ${{ env.SERVER_USER }}
+        key: ${{ env.SERVER_SSH_KEY }}
         script: |
           # Определяем параметры в зависимости от типа запуска
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -69,21 +75,21 @@ jobs:
           
           # Создаем резервную копию текущих плагинов
           sudo mkdir -p /tmp/yapay-backup-$(date +%Y%m%d-%H%M%S)
-          sudo cp -r ${{ secrets.PLUGINS_PATH }}/* /tmp/yapay-backup-$(date +%Y%m%d-%H%M%S)/ 2>/dev/null || true
+          sudo cp -r ${{ env.PLUGINS_PATH }}/* /tmp/yapay-backup-$(date +%Y%m%d-%H%M%S)/ 2>/dev/null || true
           
           # Копируем только плагины из текущего репозитория (hot-reload автоматически подхватит изменения)
           for plugin_dir in /tmp/plugins/*; do
             if [ -d "$$plugin_dir" ]; then
               plugin_name=$$(basename "$$plugin_dir")
               echo "Deploying plugin: $$plugin_name"
-              sudo mkdir -p ${{ secrets.PLUGINS_PATH }}/$$plugin_name
-              sudo cp -r $$plugin_dir/* ${{ secrets.PLUGINS_PATH }}/$$plugin_name/
+              sudo mkdir -p ${{ env.PLUGINS_PATH }}/$$plugin_name
+              sudo cp -r $$plugin_dir/* ${{ env.PLUGINS_PATH }}/$$plugin_name/
             fi
           done
           
           # Устанавливаем правильные права
-          sudo chown -R ${{ secrets.PLUGINS_USER }} ${{ secrets.PLUGINS_PATH }}
-          sudo chmod -R 755 ${{ secrets.PLUGINS_PATH }}
+          sudo chown -R ${{ env.PLUGINS_USER }} ${{ env.PLUGINS_PATH }}
+          sudo chmod -R 755 ${{ env.PLUGINS_PATH }}
           
           # Проверяем статус сервера (без перезапуска)
           sudo systemctl status yapay --no-pager
