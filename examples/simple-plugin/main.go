@@ -8,6 +8,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// This example demonstrates how to work with the Environment field in Payment struct.
+// The Environment field allows plugins to determine whether a payment came from
+// production or sandbox environment, enabling different handling logic.
+//
+// Environment values:
+// - "production": Real payment from production environment
+// - "sandbox": Test payment from sandbox environment
+// - "": Empty for older webhooks (fallback to "unknown")
+//
+// This is particularly useful for:
+// - Different logging levels for test vs production payments
+// - Conditional service activation (only for production payments)
+// - Separate notification handling for test payments
+// - Environment-specific business logic
+
 // Handler represents a simple plugin handler
 type Handler struct {
 	merchant *yapay.Merchant
@@ -47,13 +62,38 @@ func (h *Handler) OnPaymentCreated(payment *yapay.Payment) error {
 
 // OnPaymentSuccess handles successful payment (implements PaymentEventHandler)
 func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
+	// Determine environment for different handling
+	environment := payment.Environment
+	if environment == "" {
+		environment = "unknown" // Fallback for older webhooks without Environment field
+	}
+
 	h.logger.WithFields(logrus.Fields{
-		"payment_id": payment.ID,
-		"order_id":   payment.OrderID,
-		"amount":     payment.Amount,
+		"payment_id":  payment.ID,
+		"order_id":    payment.OrderID,
+		"amount":      payment.Amount,
+		"environment": environment,
 	}).Info("Payment successful")
 
-	// Example: Update order status, activate services, etc.
+	// Handle different environments
+	switch environment {
+	case "sandbox":
+		h.logger.Info("Processing sandbox payment - test mode")
+		// Example: Log test payment, don't activate real services
+		// This is a test payment, so we might want to handle it differently
+
+	case "production":
+		h.logger.Info("Processing production payment - live mode")
+		// Example: Update order status, activate services, etc.
+		// This is a real payment, so activate actual services
+
+	default:
+		h.logger.Warn("Unknown payment environment - using default handling")
+		// Fallback for unknown environments
+	}
+
+	// Common logic for all environments
+	// Example: Update order status, send notifications, etc.
 	// Notifications are sent automatically by the server based on config.yaml
 
 	return nil
@@ -61,12 +101,33 @@ func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
 
 // OnPaymentFailed handles failed payment (implements PaymentEventHandler)
 func (h *Handler) OnPaymentFailed(payment *yapay.Payment) error {
+	environment := payment.Environment
+	if environment == "" {
+		environment = "unknown"
+	}
+
 	h.logger.WithFields(logrus.Fields{
-		"payment_id": payment.ID,
-		"order_id":   payment.OrderID,
-		"amount":     payment.Amount,
+		"payment_id":  payment.ID,
+		"order_id":    payment.OrderID,
+		"amount":      payment.Amount,
+		"environment": environment,
 	}).Warn("Payment failed")
 
+	// Handle different environments for failed payments
+	switch environment {
+	case "sandbox":
+		h.logger.Info("Sandbox payment failed - test mode")
+		// Example: Log test failure, don't send real notifications
+
+	case "production":
+		h.logger.Info("Production payment failed - live mode")
+		// Example: Log failure, update order status, send notifications, etc.
+
+	default:
+		h.logger.Warn("Unknown payment environment - using default handling")
+	}
+
+	// Common logic for all environments
 	// Example: Log failure, update order status, etc.
 	// Notifications are sent automatically by the server based on config.yaml
 
@@ -75,12 +136,33 @@ func (h *Handler) OnPaymentFailed(payment *yapay.Payment) error {
 
 // OnPaymentCanceled handles canceled payment (implements PaymentEventHandler)
 func (h *Handler) OnPaymentCanceled(payment *yapay.Payment) error {
+	environment := payment.Environment
+	if environment == "" {
+		environment = "unknown"
+	}
+
 	h.logger.WithFields(logrus.Fields{
-		"payment_id": payment.ID,
-		"order_id":   payment.OrderID,
-		"amount":     payment.Amount,
+		"payment_id":  payment.ID,
+		"order_id":    payment.OrderID,
+		"amount":      payment.Amount,
+		"environment": environment,
 	}).Info("Payment canceled")
 
+	// Handle different environments for canceled payments
+	switch environment {
+	case "sandbox":
+		h.logger.Info("Sandbox payment canceled - test mode")
+		// Example: Log test cancellation, don't release real inventory
+
+	case "production":
+		h.logger.Info("Production payment canceled - live mode")
+		// Example: Release reserved inventory, send notification, etc.
+
+	default:
+		h.logger.Warn("Unknown payment environment - using default handling")
+	}
+
+	// Common logic for all environments
 	// Example: Release reserved inventory, send notification, etc.
 
 	return nil

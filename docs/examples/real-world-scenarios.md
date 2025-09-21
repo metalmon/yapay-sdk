@@ -83,10 +83,17 @@ func NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.
 
 // OnPaymentSuccess обрабатывает успешную оплату
 func (h *ProgrammingSchoolHandler) OnPaymentSuccess(payment *yapay.Payment) error {
+    // Определяем среду для разной обработки
+    environment := payment.Environment
+    if environment == "" {
+        environment = "unknown" // Fallback для старых webhook'ов
+    }
+
     h.logger.WithFields(logrus.Fields{
-        "payment_id": payment.ID,
-        "order_id":   payment.OrderID,
-        "amount":     payment.Amount,
+        "payment_id":  payment.ID,
+        "order_id":    payment.OrderID,
+        "amount":      payment.Amount,
+        "environment": environment,
     }).Info("Processing successful payment")
     
     // Извлекаем данные из метаданных
@@ -100,22 +107,38 @@ func (h *ProgrammingSchoolHandler) OnPaymentSuccess(payment *yapay.Payment) erro
         return fmt.Errorf("user_id not found in payment metadata")
     }
     
-    // Предоставляем доступ к курсу
-    if err := h.db.GrantCourseAccess(userID.(string), courseID.(string)); err != nil {
-        h.logger.WithError(err).Error("Failed to grant course access")
-        return fmt.Errorf("failed to grant course access: %w", err)
-    }
-    
-    // Отправляем приветственное письмо
-    if err := h.sendWelcomeEmail(userID.(string), courseID.(string)); err != nil {
-        h.logger.WithError(err).Warn("Failed to send welcome email")
-        // Не возвращаем ошибку, так как доступ уже предоставлен
+    // Разная логика для разных сред
+    switch environment {
+    case "sandbox":
+        h.logger.Info("Test payment - logging course access without granting real access")
+        // Тестовая среда - только логируем, не предоставляем реальный доступ
+        h.logTestCourseAccess(userID.(string), courseID.(string))
+        
+    case "production":
+        h.logger.Info("Production payment - granting real course access")
+        // Продакшн среда - предоставляем реальный доступ
+        if err := h.db.GrantCourseAccess(userID.(string), courseID.(string)); err != nil {
+            h.logger.WithError(err).Error("Failed to grant course access")
+            return fmt.Errorf("failed to grant course access: %w", err)
+        }
+        
+        // Отправляем реальное приветственное письмо
+        if err := h.sendWelcomeEmail(userID.(string), courseID.(string)); err != nil {
+            h.logger.WithError(err).Warn("Failed to send welcome email")
+            // Не возвращаем ошибку, так как доступ уже предоставлен
+        }
+        
+    default:
+        h.logger.Warn("Unknown environment - using safe fallback")
+        // Fallback для неизвестных сред - безопасное логирование
+        h.logSafeCourseAccess(userID.(string), courseID.(string))
     }
     
     h.logger.WithFields(logrus.Fields{
-        "user_id":  userID,
-        "course_id": courseID,
-    }).Info("Course access granted successfully")
+        "user_id":     userID,
+        "course_id":   courseID,
+        "environment": environment,
+    }).Info("Course access processed successfully")
     
     return nil
 }
@@ -255,7 +278,23 @@ func (g *ProgrammingSchoolPaymentGenerator) CustomizeYandexPayload(payload map[s
     return nil
 }
 
-// Вспомогательные методы
+// Вспомогательные методы для работы с Environment
+func (h *ProgrammingSchoolHandler) logTestCourseAccess(userID, courseID string) {
+    h.logger.WithFields(logrus.Fields{
+        "user_id":     userID,
+        "course_id":   courseID,
+        "environment": "test",
+    }).Info("Test course access logged (no real access granted)")
+}
+
+func (h *ProgrammingSchoolHandler) logSafeCourseAccess(userID, courseID string) {
+    h.logger.WithFields(logrus.Fields{
+        "user_id":     userID,
+        "course_id":   courseID,
+        "environment": "unknown",
+    }).Warn("Safe course access logged (unknown environment)")
+}
+
 func (h *ProgrammingSchoolHandler) sendWelcomeEmail(userID, courseID string) error {
     // Реализация отправки email
     return nil
@@ -478,7 +517,71 @@ func (h *MyHandler) OnPaymentSuccess(payment *yapay.Payment) error {
 }
 ```
 
-### 3. Валидация данных
+### 3. Работа с Environment
+
+Используйте поле `Environment` для безопасной обработки тестовых и реальных платежей:
+
+```go
+func (h *MyHandler) OnPaymentSuccess(payment *yapay.Payment) error {
+    environment := payment.Environment
+    if environment == "" {
+        environment = "unknown" // Fallback для старых webhook'ов
+    }
+
+    switch environment {
+    case "sandbox":
+        // Тестовая среда - безопасная обработка
+        h.logger.Info("Test payment - using safe handling")
+        
+        // Пример: логируем, но не активируем реальные сервисы
+        h.logTestActivity(payment)
+        
+    case "production":
+        // Продакшн среда - полная обработка
+        h.logger.Info("Production payment - activating real services")
+        
+        // Пример: активируем реальные сервисы
+        if err := h.activateRealServices(payment); err != nil {
+            return fmt.Errorf("failed to activate services: %w", err)
+        }
+        
+    default:
+        // Неизвестная среда - безопасный fallback
+        h.logger.Warn("Unknown environment - using safe fallback")
+        h.logSafeActivity(payment)
+    }
+    
+    return nil
+}
+
+// Вспомогательные методы
+func (h *MyHandler) logTestActivity(payment *yapay.Payment) {
+    h.logger.WithFields(logrus.Fields{
+        "payment_id":  payment.ID,
+        "environment": "test",
+    }).Info("Test payment processed safely")
+}
+
+func (h *MyHandler) activateRealServices(payment *yapay.Payment) error {
+    // Реальная активация сервисов для продакшн платежей
+    return nil
+}
+
+func (h *MyHandler) logSafeActivity(payment *yapay.Payment) {
+    h.logger.WithFields(logrus.Fields{
+        "payment_id":  payment.ID,
+        "environment": "unknown",
+    }).Info("Payment processed with safe fallback")
+}
+```
+
+**Преимущества использования Environment:**
+- **Безопасность**: Тестовые платежи не активируют реальные сервисы
+- **Отладка**: Легко отличить тестовые и реальные платежи в логах
+- **Гибкость**: Разная логика для разных сред
+- **Совместимость**: Fallback для старых webhook'ов
+
+### 4. Валидация данных
 
 Всегда валидируйте входящие данные:
 

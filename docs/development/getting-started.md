@@ -85,10 +85,36 @@ func (h *MyPluginHandler) OnPaymentCreated(payment *yapay.Payment) error {
 }
 
 func (h *MyPluginHandler) OnPaymentSuccess(payment *yapay.Payment) error {
+    // Определяем среду для разной обработки
+    environment := payment.Environment
+    if environment == "" {
+        environment = "unknown" // Fallback для старых webhook'ов
+    }
+
     h.logger.WithFields(logrus.Fields{
-        "payment_id": payment.ID,
-        "amount":     payment.Amount,
+        "payment_id":  payment.ID,
+        "amount":      payment.Amount,
+        "environment": environment,
     }).Info("Payment succeeded")
+
+    // Разная логика для разных сред
+    switch environment {
+    case "sandbox":
+        h.logger.Info("Test payment - skipping service activation")
+        // Тестовая среда - только логируем, не активируем реальные сервисы
+        
+    case "production":
+        h.logger.Info("Production payment - activating services")
+        // Продакшн среда - активируем реальные сервисы
+        if err := h.activateServices(payment); err != nil {
+            return fmt.Errorf("failed to activate services: %w", err)
+        }
+        
+    default:
+        h.logger.Warn("Unknown environment - using safe fallback")
+        // Fallback для неизвестных сред
+    }
+    
     return nil
 }
 
@@ -286,7 +312,83 @@ func (h *MyPluginHandler) ValidateRequest(req *yapay.PaymentRequest) error {
 }
 ```
 
-### 3. Валидация данных
+### 3. Работа с Environment
+
+Используйте поле `Environment` для определения среды платежа:
+
+```go
+func (h *MyPluginHandler) OnPaymentSuccess(payment *yapay.Payment) error {
+    environment := payment.Environment
+    if environment == "" {
+        environment = "unknown" // Fallback для старых webhook'ов
+    }
+
+    switch environment {
+    case "sandbox":
+        // Тестовая среда - безопасная обработка
+        h.logger.Info("Test payment received - using safe handling")
+        
+        // Пример: логируем, но не активируем реальные сервисы
+        h.logTestPayment(payment)
+        
+    case "production":
+        // Продакшн среда - полная обработка
+        h.logger.Info("Production payment received - activating services")
+        
+        // Пример: активируем реальные сервисы
+        if err := h.activateRealServices(payment); err != nil {
+            return fmt.Errorf("failed to activate services: %w", err)
+        }
+        
+        // Отправляем реальные уведомления
+        if err := h.sendRealNotifications(payment); err != nil {
+            h.logger.WithError(err).Warn("Failed to send notifications")
+        }
+        
+    default:
+        // Неизвестная среда - безопасный fallback
+        h.logger.Warn("Unknown environment - using safe fallback")
+        h.logSafePayment(payment)
+    }
+    
+    return nil
+}
+
+// Вспомогательные методы
+func (h *MyPluginHandler) logTestPayment(payment *yapay.Payment) {
+    h.logger.WithFields(logrus.Fields{
+        "payment_id":  payment.ID,
+        "amount":      payment.Amount,
+        "environment": "test",
+    }).Info("Test payment processed safely")
+}
+
+func (h *MyPluginHandler) activateRealServices(payment *yapay.Payment) error {
+    // Реальная активация сервисов для продакшн платежей
+    return nil
+}
+
+func (h *MyPluginHandler) sendRealNotifications(payment *yapay.Payment) error {
+    // Отправка реальных уведомлений для продакшн платежей
+    return nil
+}
+
+func (h *MyPluginHandler) logSafePayment(payment *yapay.Payment) {
+    // Безопасное логирование для неизвестных сред
+    h.logger.WithFields(logrus.Fields{
+        "payment_id": payment.ID,
+        "environment": "unknown",
+    }).Info("Payment processed with safe fallback")
+}
+```
+
+**Преимущества использования Environment:**
+- **Безопасность**: Тестовые платежи не активируют реальные сервисы
+- **Отладка**: Легко отличить тестовые и реальные платежи в логах
+- **Гибкость**: Разная логика для разных сред
+- **Совместимость**: Fallback для старых webhook'ов
+
+### 4. Валидация данных
 
 ```go
 func (h *MyPluginHandler) ValidateRequest(req *yapay.PaymentRequest) error {

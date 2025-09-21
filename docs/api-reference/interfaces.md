@@ -37,10 +37,35 @@ func (h *MyHandler) OnPaymentCreated(payment *yapay.Payment) error {
 **Пример:**
 ```go
 func (h *MyHandler) OnPaymentSuccess(payment *yapay.Payment) error {
-    // Активация курса, отправка уведомлений и т.д.
-    if err := h.activateCourse(payment); err != nil {
-        return fmt.Errorf("failed to activate course: %w", err)
+    // Определяем среду для разной обработки
+    environment := payment.Environment
+    if environment == "" {
+        environment = "unknown" // Fallback для старых webhook'ов
     }
+
+    h.logger.WithFields(logrus.Fields{
+        "payment_id":  payment.ID,
+        "environment": environment,
+    }).Info("Payment successful")
+
+    // Разная логика для разных сред
+    switch environment {
+    case "sandbox":
+        h.logger.Info("Test payment - don't activate real services")
+        // Логируем тестовый платеж, не активируем реальные сервисы
+        
+    case "production":
+        h.logger.Info("Production payment - activate services")
+        // Активация курса, отправка уведомлений и т.д.
+        if err := h.activateCourse(payment); err != nil {
+            return fmt.Errorf("failed to activate course: %w", err)
+        }
+        
+    default:
+        h.logger.Warn("Unknown environment - using default handling")
+        // Fallback для неизвестных сред
+    }
+    
     return nil
 }
 ```
@@ -259,11 +284,19 @@ type Payment struct {
     Status      string                 `json:"status" yaml:"status"`
     ReturnURL   string                 `json:"return_url" yaml:"return_url"`
     PaymentURL  string                 `json:"payment_url,omitempty" yaml:"payment_url,omitempty"`
+    Environment string                 `json:"environment,omitempty" yaml:"environment,omitempty"` // "production" | "sandbox" | ""
     Metadata    map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
     CreatedAt   string                 `json:"created_at,omitempty" yaml:"created_at,omitempty"`
     UpdatedAt   string                 `json:"updated_at,omitempty" yaml:"updated_at,omitempty"`
 }
 ```
+
+**Поле Environment:**
+- `"production"` - платеж из продакшн среды
+- `"sandbox"` - платеж из тестовой среды  
+- `""` - пустое значение для старых webhook'ов (fallback к "unknown")
+
+Это поле позволяет плагинам определить, из какой среды пришел платеж, и соответственно обработать его.
 
 ### Merchant
 
@@ -369,7 +402,44 @@ h.logger.WithField("merchant_id", merchant.ID).Info("Processing payment")
 h.logger.WithField("secret_key", merchant.Yandex.SecretKey).Info("Processing payment")
 ```
 
-### 5. Конфигурация безопасности
+### 5. Работа с Environment
+
+Используйте поле `Environment` для определения среды платежа:
+
+```go
+func (h *MyHandler) OnPaymentSuccess(payment *yapay.Payment) error {
+    environment := payment.Environment
+    if environment == "" {
+        environment = "unknown" // Fallback для старых webhook'ов
+    }
+
+    switch environment {
+    case "sandbox":
+        // Тестовая среда - логируем, но не активируем реальные сервисы
+        h.logger.Info("Test payment received - skipping service activation")
+        
+    case "production":
+        // Продакшн среда - активируем реальные сервисы
+        if err := h.activateRealServices(payment); err != nil {
+            return fmt.Errorf("failed to activate services: %w", err)
+        }
+        
+    default:
+        // Неизвестная среда - используем безопасный fallback
+        h.logger.Warn("Unknown environment - using safe fallback")
+    }
+    
+    return nil
+}
+```
+
+**Преимущества использования Environment:**
+- Разделение тестовых и реальных платежей
+- Безопасная обработка тестовых транзакций
+- Логирование с указанием среды
+- Условная активация сервисов
+
+### 6. Конфигурация безопасности
 
 Используйте новую структуру `SecurityConfig` для настройки безопасности:
 

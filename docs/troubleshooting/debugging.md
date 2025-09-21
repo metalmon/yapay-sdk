@@ -354,15 +354,22 @@ make benchmark-plugin PLUGIN_NAME=simple-plugin CONFIG_PATH=../../examples/simpl
 
 ## Лучшие практики отладки
 
-### 1. Используйте структурированные логи
+### 1. Используйте структурированные логи с Environment
 
 ```go
 func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
+    // Определяем среду для логирования
+    environment := payment.Environment
+    if environment == "" {
+        environment = "unknown" // Fallback для старых webhook'ов
+    }
+
     h.logger.WithFields(logrus.Fields{
-        "payment_id": payment.ID,
-        "order_id":   payment.OrderID,
-        "amount":     payment.Amount,
-        "status":     payment.Status,
+        "payment_id":  payment.ID,
+        "order_id":    payment.OrderID,
+        "amount":      payment.Amount,
+        "status":      payment.Status,
+        "environment": environment, // Важно для отладки!
     }).Info("Processing successful payment")
     
     // Ваша логика...
@@ -396,7 +403,48 @@ func TestEdgeCases(t *testing.T) {
 }
 ```
 
-### 4. Мониторинг производительности
+### 4. Отладка Environment
+
+При отладке важно понимать, из какой среды пришел платеж:
+
+```go
+func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
+    environment := payment.Environment
+    if environment == "" {
+        environment = "unknown"
+        h.logger.Warn("Payment without Environment field - using fallback")
+    }
+
+    // Разная логика для разных сред
+    switch environment {
+    case "sandbox":
+        h.logger.Info("Test payment - safe handling")
+        // Тестовая среда - безопасная обработка
+        
+    case "production":
+        h.logger.Info("Production payment - real services")
+        // Продакшн среда - реальные сервисы
+        
+    default:
+        h.logger.Warn("Unknown environment - safe fallback")
+        // Fallback для неизвестных сред
+    }
+    
+    return nil
+}
+```
+
+**Отладка Environment в логах:**
+```bash
+# Фильтрация логов по среде
+grep "environment.*sandbox" /var/log/yapay.log
+grep "environment.*production" /var/log/yapay.log
+
+# Поиск платежей без Environment
+grep "Environment field" /var/log/yapay.log
+```
+
+### 5. Мониторинг производительности
 
 ```go
 func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
@@ -404,8 +452,9 @@ func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
     defer func() {
         duration := time.Since(start)
         h.logger.WithFields(logrus.Fields{
-            "payment_id": payment.ID,
-            "duration":   duration,
+            "payment_id":  payment.ID,
+            "environment": payment.Environment,
+            "duration":    duration,
         }).Debug("OnPaymentSuccess completed")
     }()
     
