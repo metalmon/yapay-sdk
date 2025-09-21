@@ -491,7 +491,7 @@ lint: fmt
 	@printf "$(GREEN)Linting code...$(NC)\n"
 	@if ! command -v golangci-lint >/dev/null 2>&1; then \
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.3; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
 	fi
 	golangci-lint run --timeout=5m
 	@printf "$(GREEN)Linting completed!$(NC)\n"
@@ -501,7 +501,7 @@ lint-fix: fmt
 	@printf "$(GREEN)Linting code with auto-fix...$(NC)\n"
 	@if ! command -v golangci-lint >/dev/null 2>&1; then \
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.3; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
 	fi
 	golangci-lint run --timeout=5m --fix
 	@printf "$(GREEN)Linting with auto-fix completed!$(NC)\n"

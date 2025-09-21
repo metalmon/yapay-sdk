@@ -21,7 +21,7 @@ jobs:
       - name: Run linter
         uses: golangci/golangci-lint-action@v5
         with:
-          version: v1.54.3
+          version: v1.64.8
           args: --timeout=5m
           skip-cache: true
 
