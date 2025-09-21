@@ -11,7 +11,7 @@
 
 *Создавайте индивидуальную логику обработки платежей для каждого клиента*
 
-[Документация](docs/README.md) • [Быстрый старт](QUICK_START.md) • [Ручное развертывание](docs/development/manual-deployment.md) • [Поддержка](https://t.me/metal_monkey)
+[Документация](docs/README.md) • [Быстрый старт](QUICK_START.md) • [Дорожная карта](ROADMAP.md) • [Ручное развертывание](docs/development/manual-deployment.md) • [Поддержка](https://t.me/metal_monkey)
 
 </div>
 
@@ -104,5 +104,5 @@ make tunnel-start             # Туннель для webhook'ов
 [![GitHub stars](https://img.shields.io/github/stars/metalmon/yapay-sdk?style=social)](https://github.com/metalmon/yapay-sdk)
 [![GitHub forks](https://img.shields.io/github/forks/metalmon/yapay-sdk?style=social)](https://github.com/metalmon/yapay-sdk)
 
-**Версия**: 1.0.8 | **Статус**: ✅ Готов к использованию
+**Версия**: 1.0.9 | **Статус**: ✅ Готов к использованию
 </div>
