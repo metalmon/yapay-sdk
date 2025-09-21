@@ -1,7 +1,12 @@
 services:
-  # Main development container for YAPAY SDK with integrated server
+  # Main development container for YAPAY SDK with local build
   yapay-sdk-dev:
-    image: metalmon/yapay:dev
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile.dev
+      args:
+        GOPROXY: "https://proxy.golang.org,direct"
+        GOSUMDB: "sum.golang.org"
     volumes:
       - ..:/workspace:cached
       # Mount the Docker socket to allow running Docker commands from within the container (Docker-out-of-Docker)
