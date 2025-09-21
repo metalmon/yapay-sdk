@@ -2,7 +2,7 @@
 
 # Yapay SDK 🚀
 
-[![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)](https://github.com/metalmon/yapay-sdk)
+[![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)](https://github.com/metalmon/yapay-sdk)
 [![Status](https://img.shields.io/badge/status-ready-green.svg)](https://github.com/metalmon/yapay-sdk)
 [![Go Version](https://img.shields.io/badge/go-1.22+-00ADD8.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

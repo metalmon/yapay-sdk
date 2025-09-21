@@ -14,4 +14,4 @@ require (
 	golang.org/x/sys v0.15.0 // indirect
 )
 
-replace github.com/metalmon/yapay-sdk => ../..
+// replace github.com/metalmon/yapay-sdk => ../..
