@@ -1,7 +1,7 @@
 {
   "name": "YAPAY SDK Development Environment",
   "dockerComposeFile": "docker-compose.yml",
-  "service": "yapay-sdk-development",
+  "service": "yapay-sdk-dev",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
 

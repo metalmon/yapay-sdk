@@ -4,7 +4,7 @@
 
 ## 🏗️ Архитектура контейнеров
 
-- **yapay-sdk-development** - основной контейнер разработки SDK
+- **yapay-sdk-dev** - основной контейнер разработки SDK
 - **yandex-pay-mock** - мок сервис для Yandex Pay API
 - **yapay-sdk-development-network** - изолированная сеть для сервисов
 
