@@ -16,12 +16,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.22"
+          go-version: "1.24"
 
       - name: Run linter
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v5
         with:
           version: v1.54.3
+          install-mode: goinstall
           args: --timeout=5m
           skip-cache: true
 
@@ -51,7 +52,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.22"
+          go-version: "1.24"
 
       - name: Run Gosec Security Scanner
         run: |
