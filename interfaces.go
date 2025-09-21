@@ -24,6 +24,7 @@ type Payment struct {
 	Status      string                 `json:"status"`
 	ReturnURL   string                 `json:"return_url"`
 	PaymentURL  string                 `json:"payment_url,omitempty"`
+	Environment string                 `json:"environment,omitempty"` // Environment: "production" or "sandbox"
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 	CreatedAt   string                 `json:"created_at,omitempty"`
 	UpdatedAt   string                 `json:"updated_at,omitempty"`
