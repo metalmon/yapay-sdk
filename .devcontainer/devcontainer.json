@@ -57,7 +57,7 @@
   "postCreateCommand": "echo 'YAPAY SDK Devcontainer created successfully'",
 
   // Use 'postStartCommand' to run commands after the container starts
-  "postStartCommand": "echo 'YAPAY SDK Devcontainer ready for development' && echo 'Terminal: $TERM' && echo 'Go version:' && go version",
+  "postStartCommand": "export TERM=xterm-256color && export COLORTERM=truecolor && echo 'YAPAY SDK Devcontainer ready for development' && echo 'Terminal: $TERM' && echo 'Go version:' && go version",
 
   // Configure tool-specific properties
   "remoteUser": "root",

@@ -54,5 +54,5 @@ echo -e "  Plugins Directory: /workspace/plugins"
 
 echo -e "${GREEN}🎯 Starting YAPAY Server...${NC}"
 
-# Start the server
+# Start the server from the correct location
 exec /usr/local/bin/yapay-server

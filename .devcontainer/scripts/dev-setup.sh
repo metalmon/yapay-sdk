@@ -22,6 +22,10 @@ go build -o bin/yapay ./cmd/server
 echo "⚙️ Setting up development aliases..."
 cat >> ~/.bashrc << 'EOF'
 
+# Terminal color support
+export TERM=xterm-256color
+export COLORTERM=truecolor
+
 # Yandex Payment Gateway development aliases
 alias dev-run='make run'
 alias dev-test='make test'
