@@ -1,4 +1,3 @@
-id: "simple-plugin-client"
 name: "Simple Plugin Example"
 description: "Простой пример плагина для Yapay SDK"
 domain: "example.com"
@@ -23,6 +22,10 @@ yandex:
   secret_key: "your-yandex-secret-key"
   sandbox_mode: true
   currency: "RUB"
+
+plugin:
+  type: "so"
+  path: "simple-plugin.so"
 
 notifications:
   telegram:

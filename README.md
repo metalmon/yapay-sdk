@@ -2,9 +2,9 @@
 
 # Yapay SDK 🚀
 
-[![Version](https://img.shields.io/badge/version-1.0.8-blue.svg)](https://github.com/metalmon/yapay-sdk)
+[![Version](https://img.shields.io/badge/version-1.0.10-blue.svg)](https://github.com/metalmon/yapay-sdk)
 [![Status](https://img.shields.io/badge/status-ready-green.svg)](https://github.com/metalmon/yapay-sdk)
-[![Go Version](https://img.shields.io/badge/go-1.22+-00ADD8.svg)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/go-1.24+-00ADD8.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **SDK для создания плагинов бекенд прокси платежной системы Яндекс Пэй**
@@ -20,9 +20,9 @@
 ## ✨ Что делает Yapay SDK?
 
 🔌 **Плагинная архитектура** - каждый клиент = отдельный плагин  
-🎯 **100% совместимость** - сборка с официальным builder-образом  
 🛡️ **Полная изоляция** - ошибка одного клиента не влияет на других  
-⚡ **Готовые инструменты** - отладка, тестирование, туннели для webhook'ов
+⚡ **Готовые инструменты** - отладка, тестирование, туннели для webhook'ов  
+🔧 **ABI совместимость** - плагины и сервер используют одинаковые зависимости
 
 ## 🚀 Быстрый старт
 
@@ -104,5 +104,5 @@ make tunnel-start             # Туннель для webhook'ов
 [![GitHub stars](https://img.shields.io/github/stars/metalmon/yapay-sdk?style=social)](https://github.com/metalmon/yapay-sdk)
 [![GitHub forks](https://img.shields.io/github/forks/metalmon/yapay-sdk?style=social)](https://github.com/metalmon/yapay-sdk)
 
-**Версия**: 1.0.9 | **Статус**: ✅ Готов к использованию
+**Версия**: 1.0.10 | **Статус**: ✅ Готов к использованию
 </div>

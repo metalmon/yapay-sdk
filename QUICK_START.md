@@ -50,3 +50,66 @@ make help                      # Справка по всем командам
 ---
 
 **Важно**: Всегда используйте `make build-plugin-NAME` для сборки плагинов с официальным builder-образом для обеспечения совместимости с production сервером.
+
+## ⚙️ Конфигурация плагинов
+
+### Структура go.mod
+Каждый плагин должен иметь собственный `go.mod` файл с правильной структурой:
+
+```go
+module my-plugin
+
+go 1.24.0
+toolchain go1.24.7
+
+require (
+    github.com/metalmon/yapay-sdk v1.0.10
+    github.com/sirupsen/logrus v1.9.3
+)
+
+// Replace директива для синхронизации версии golang.org/x/sys
+replace golang.org/x/sys => golang.org/x/sys v0.36.0
+
+require golang.org/x/sys v0.36.0 // indirect
+```
+
+### Конфигурация плагина
+Плагин настраивается через файл `config.yaml` в директории плагина:
+
+```yaml
+# plugins/my-plugin/config.yaml
+name: "My Plugin"           # Обязательно: название плагина
+domain: "example.com"       # Обязательно: домен клиента
+enabled: true               # Обязательно: включен ли плагин
+
+yandex:
+  merchant_id: "YOUR_MERCHANT_ID"  # Обязательно: ID мерчанта (используется как client ID)
+  secret_key: "YOUR_SECRET_KEY"    # Обязательно: секретный ключ
+  sandbox_mode: true               # Опционально: режим песочницы
+
+security:
+  request_enforcement: monitor     # Обязательно: политика валидации
+  rate_limit: 1000                # Обязательно: лимит запросов
+  cors:
+    origins:                      # Обязательно: CORS домены
+      - "https://example.com"
+      - "https://www.example.com"
+
+plugin:
+  type: "so"                      # Обязательно для .so плагинов: тип плагина ("builtin", "so", "grpc")
+  path: "my-plugin.so"            # Обязательно для .so плагинов: путь до .so файла
+```
+
+### Типы плагинов
+- **`builtin`** (по умолчанию) - встроенный обработчик без кастомной логики
+- **`so`** - скомпилированный Go плагин (.so файл) с кастомной бизнес-логикой
+- **`grpc`** - gRPC плагин (планируется в будущих версиях)
+
+### Автоматическая загрузка
+Сервер автоматически:
+- Сканирует директорию `plugins/` на наличие `.so` файлов
+- Загружает конфигурацию из `plugins/{plugin-name}/config.yaml`
+- Определяет тип плагина (по умолчанию `builtin`)
+- Регистрирует плагин по имени `.so` файла
+
+**Важно:** Для SDK плагинов с кастомной логикой **обязательно** указать `plugin.type: "so"` и `plugin.path`, иначе будет использоваться встроенный обработчик `builtin`.
