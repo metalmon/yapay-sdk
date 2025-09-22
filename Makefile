@@ -10,8 +10,12 @@ DOCKER_IMAGE := metalmon/yapay
 BUILDER_TAG := builder
 
 # Modules-only build configuration
+# Unified cache for builds (Docker container)
 GOMODCACHE := /gomodcache
 GOCACHE := /tmp/gocache
+# Local cache for development tools (lint, fmt, etc.)
+LOCAL_GOMODCACHE := $(HOME)/.cache/go/mod
+LOCAL_GOCACHE := $(HOME)/.cache/go-build
 GO_MOD_FLAGS := -mod=mod
 GO_BUILD_FLAGS := -buildvcs=false -ldflags="-w -s"
 
@@ -603,8 +607,9 @@ fmt:
 		printf "$(YELLOW)Installing goimports...$(NC)\n"; \
 		go install golang.org/x/tools/cmd/goimports@v0.20.0; \
 	fi
-	GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) go fmt $(GO_MOD_FLAGS) ./...
-	GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) goimports -w .
+	@mkdir -p $(LOCAL_GOMODCACHE) $(LOCAL_GOCACHE)
+	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) go fmt $(GO_MOD_FLAGS) ./...
+	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) goimports -w .
 	@printf "$(GREEN)Code formatting completed!$(NC)\n"
 
 # Lint code with auto-fix formatting
@@ -614,7 +619,8 @@ lint: fmt
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
 		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
 	fi
-	GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) golangci-lint run --timeout=5m
+	@mkdir -p $(LOCAL_GOMODCACHE) $(LOCAL_GOCACHE)
+	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) golangci-lint run --timeout=5m
 	@printf "$(GREEN)Linting completed!$(NC)\n"
 
 # Lint with auto-fix (fixes what can be fixed automatically)
@@ -624,7 +630,8 @@ lint-fix: fmt
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
 		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
 	fi
-	GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) golangci-lint run --timeout=5m --fix
+	@mkdir -p $(LOCAL_GOMODCACHE) $(LOCAL_GOCACHE)
+	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) golangci-lint run --timeout=5m --fix
 	@printf "$(GREEN)Linting with auto-fix completed!$(NC)\n"
 
 # Security scan
