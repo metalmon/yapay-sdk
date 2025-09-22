@@ -2,7 +2,6 @@ services:
   # Main development container for YAPAY SDK with integrated server
   yapay-sdk-dev:
     image: metalmon/yapay:dev
-    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ..:/workspace:cached
       # Mount the Docker socket to allow running Docker commands from within the container (Docker-out-of-Docker)
