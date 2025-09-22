@@ -327,7 +327,7 @@ test-plugins:
 		if [ -d "$$plugin_dir" ] && [ -f "$$plugin_dir/go.mod" ]; then \
 			plugin_name=$$(basename "$$plugin_dir"); \
 			printf "$(YELLOW)Testing plugin: $$plugin_name$(NC)\n"; \
-			(cd "$$plugin_dir" && go test -v ./... || printf "$(RED)Plugin $$plugin_name tests failed$(NC)\n"); \
+			(cd "$$plugin_dir" && go test -mod=readonly -v ./... || printf "$(RED)Plugin $$plugin_name tests failed$(NC)\n"); \
 		fi; \
 	done
 
@@ -437,7 +437,7 @@ new-plugin-%:
 	fi; \
 	printf "$(GREEN)Creating new plugin: $$plugin_name in src/$(NC)\n"; \
 	mkdir -p "$$src_dir"; \
-	cp -r "src/simple-plugin/"* "$$src_dir/"; \
+	cp -r "examples/simple-plugin/"* "$$src_dir/"; \
 	\
 	# Convert plugin name to PascalCase for Go types \
 	pascal_name=$$(echo $$plugin_name | sed 's/-\([a-z]\)/\U\1/g' | sed 's/^\([a-z]\)/\U\1/'); \

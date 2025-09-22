@@ -2,12 +2,13 @@ services:
   # Main development container for YAPAY SDK with integrated server
   yapay-sdk-dev:
     image: metalmon/yapay:dev
+    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ..:/workspace:cached
       # Mount the Docker socket to allow running Docker commands from within the container (Docker-out-of-Docker)
       - /var/run/docker.sock:/var/run/docker.sock
       - go-mod-cache:/go/pkg/mod
-      - go-build-cache:/root/.cache/go-build
+      - go-build-cache:/home/yapay/.cache/go-build
     environment:
       # Pass the host project path to the container, so it can be used for Docker-out-of-Docker volume mounts.
       - HOST_PROJECT_PATH=${PWD}
