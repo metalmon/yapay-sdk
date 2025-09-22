@@ -14,24 +14,12 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Starting YAPAY Server for Development${NC}"
 
-# Check if we're in the right directory
-if [ ! -d "/workspace/plugins" ]; then
-    echo -e "${RED}❌ Error: plugins directory not found. Please run this from the workspace root.${NC}"
-    exit 1
-fi
-
-# Build plugins first
-echo -e "${YELLOW}📦 Building plugins...${NC}"
+# Always run from workspace root
 cd /workspace
-make build-plugins
 
-# Check if plugins were built successfully
-if [ ! -f "/workspace/plugins/simple-plugin/simple-plugin.so" ]; then
-    echo -e "${RED}❌ Error: Failed to build plugins. Please check the build output.${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✅ Plugins built successfully${NC}"
+# Ensure plugins directory exists but do NOT build plugins in SDK devcontainer
+mkdir -p /workspace/plugins
+echo -e "${YELLOW}📦 Skipping plugin build in SDK devcontainer. Plugins directory may be empty.${NC}"
 
 # Set up environment variables
 export PORT=${PORT:-8080}
@@ -40,9 +28,6 @@ export GIN_MODE=${GIN_MODE:-debug}
 export YANDEX_SANDBOX_MODE=${YANDEX_SANDBOX_MODE:-true}
 export METRICS_PORT=${METRICS_PORT:-8081}
 export METRICS_REQUIRE_AUTH=${METRICS_REQUIRE_AUTH:-false}
-
-# Create plugins directory if it doesn't exist
-mkdir -p /workspace/plugins
 
 echo -e "${BLUE}🔧 Server Configuration:${NC}"
 echo -e "  Port: ${PORT}"
