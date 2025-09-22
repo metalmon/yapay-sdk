@@ -9,6 +9,15 @@ TOOLS_DIR := tools
 DOCKER_IMAGE := metalmon/yapay
 BUILDER_TAG := builder
 
+# Modules-only build configuration
+GOMODCACHE := /gomodcache
+GOCACHE := /tmp/gocache
+GO_MOD_FLAGS := -mod=mod
+GO_BUILD_FLAGS := -buildvcs=false -ldflags="-w -s"
+
+# Version synchronization
+VERSIONS_FILE := versions.env
+
 # Universal Environment Detection and Path Configuration
 # Automatically detects environment: devcontainer, container, or host
 DETECT_ENV := $(shell if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then echo "devcontainer"; elif [ -f /.dockerenv ]; then echo "container"; else echo "host"; fi)
@@ -54,6 +63,39 @@ show-env:
 	@printf "  Docker Volume: $(DOCKER_VOLUME)\n"
 	@printf "  Builder Deps: $(BUILDER_DEPS_PATH)\n"
 	@printf "  Current PWD: $(PWD)\n"
+	@printf "  Go Module Cache: $(GOMODCACHE)\n"
+	@printf "  Go Build Cache: $(GOCACHE)\n"
+
+# Check version compatibility
+check-versions:
+	@printf "$(GREEN)Checking version compatibility...$(NC)\n"
+	@if [ -f "$(VERSIONS_FILE)" ]; then \
+		. ./$(VERSIONS_FILE); \
+		current_go=$$(go version | cut -d' ' -f3); \
+		printf "$(YELLOW)Current Go version: $$current_go$(NC)\n"; \
+		printf "$(YELLOW)Expected Go version: $$GO_VERSION$(NC)\n"; \
+		if [ "$$current_go" != "$$GO_VERSION" ]; then \
+			printf "$(RED)Error: Go version mismatch!$(NC)\n"; \
+			printf "$(RED)Expected: $$GO_VERSION$(NC)\n"; \
+			printf "$(RED)Current: $$current_go$(NC)\n"; \
+			printf "$(YELLOW)Please update Go to the correct version$(NC)\n"; \
+			exit 1; \
+		fi; \
+		current_yapay_sdk=$$(grep "module github.com/metalmon/yapay-sdk" go.mod | cut -d' ' -f3); \
+		printf "$(YELLOW)Current yapay-sdk version: $$current_yapay_sdk$(NC)\n"; \
+		printf "$(YELLOW)Expected yapay-sdk version: $$YAPAY_SDK_VERSION$(NC)\n"; \
+		if [ "$$current_yapay_sdk" != "$$YAPAY_SDK_VERSION" ]; then \
+			printf "$(RED)Error: yapay-sdk version mismatch!$(NC)\n"; \
+			printf "$(RED)Expected: $$YAPAY_SDK_VERSION$(NC)\n"; \
+			printf "$(RED)Current: $$current_yapay_sdk$(NC)\n"; \
+			printf "$(YELLOW)Please update yapay-sdk to the correct version$(NC)\n"; \
+			exit 1; \
+		fi; \
+		printf "$(GREEN)Version compatibility check passed!$(NC)\n"; \
+	else \
+		printf "$(YELLOW)Warning: $(VERSIONS_FILE) not found$(NC)\n"; \
+		printf "$(YELLOW)Skipping version check$(NC)\n"; \
+	fi
 
 # Show help
 help:
@@ -140,12 +182,10 @@ build-plugins:
 				printf "Building plugin: $$plugin_name\n"; \
 				mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
 				rm -f "$$plugin_dir/$$plugin_name.so"; \
-				(cd "$$plugin_dir" && rm -rf vendor && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOCACHE=/tmp/go-build GOOS=linux GOARCH=amd64 go build \
-					-mod=mod \
+				(cd "$$plugin_dir" && GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+					$(GO_MOD_FLAGS) \
 					-buildmode=plugin \
-					-buildvcs=false \
-					-buildvcs=false \
-					-ldflags="-w -s" \
+					$(GO_BUILD_FLAGS) \
 					-o $$plugin_name.so \
 					.); \
 				cp "$$plugin_dir/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
@@ -179,11 +219,10 @@ build-plugins:
 					printf "Building plugin: $$plugin_name\n"; \
 					mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
 					rm -f "$$plugin_dir/$$plugin_name.so"; \
-					(cd "$$plugin_dir" && cp $(BUILDER_DEPS_PATH)/go.mod . && sed -i 's/^module yapay$$/module $$plugin_name/' go.mod && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOCACHE=/tmp/go-build GOOS=linux GOARCH=amd64 go build \
-						-mod=readonly \
+					(cd "$$plugin_dir" && GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+						$(GO_MOD_FLAGS) \
 						-buildmode=plugin \
-						-buildvcs=false \
-						-ldflags="-w -s" \
+						$(GO_BUILD_FLAGS) \
 						-o $$plugin_name.so \
 						.); \
 					cp "$$plugin_dir/$$plugin_name.so" $(OUTPUT_DIR)/$$plugin_name/; \
@@ -204,11 +243,10 @@ build-plugin-%:
 	printf "$(BLUE)Environment: $(ENV_INFO)$(NC)\n"; \
 	if [ "$(BUILD_MODE)" = "direct" ]; then \
 		printf "$(YELLOW)Direct build in devcontainer...$(NC)\n"; \
-		(cd "src/$$plugin_name" && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
-			-mod=vendor \
+		(cd "src/$$plugin_name" && GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+			$(GO_MOD_FLAGS) \
 			-buildmode=plugin \
-			-buildvcs=false \
-			-ldflags="-w -s" \
+			$(GO_BUILD_FLAGS) \
 			-o $$plugin_name.so \
 			.); \
 		mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
@@ -234,11 +272,10 @@ build-plugin-%:
 			-e GOCACHE=/tmp/go-build \
 			-u $(shell id -u):$(shell id -g) \
 			$(DOCKER_IMAGE):$(BUILDER_TAG) \
-			sh -c 'cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
-				-mod=vendor \
+			sh -c 'GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+				$(GO_MOD_FLAGS) \
 				-buildmode=plugin \
-				-buildvcs=false \
-				-ldflags="-w -s" \
+				$(GO_BUILD_FLAGS) \
 				-o '$$plugin_name'.so \
 				.'; \
 		mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
@@ -262,8 +299,7 @@ clean:
 		if [ -d "$$plugin_dir" ]; then \
 			plugin_name=$$(basename "$$plugin_dir"); \
 			rm -f $$plugin_dir/*.so; \
-			rm -rf $$plugin_dir/vendor; \
-			rm -f $$plugin_dir/go.mod $$plugin_dir/go.sum; \
+			# Keep go.mod and go.sum - they are needed for modules-only builds \
 		fi; \
 	done
 	@printf "$(GREEN)Clean completed!$(NC)\n"
@@ -330,7 +366,7 @@ test-plugins:
 		if [ -d "$$plugin_dir" ] && [ -f "$$plugin_dir/go.mod" ]; then \
 			plugin_name=$$(basename "$$plugin_dir"); \
 			printf "$(YELLOW)Testing plugin: $$plugin_name$(NC)\n"; \
-			(cd "$$plugin_dir" && go test -mod=readonly -v ./... || printf "$(RED)Plugin $$plugin_name tests failed$(NC)\n"); \
+			(cd "$$plugin_dir" && GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) go test $(GO_MOD_FLAGS) -v ./... || printf "$(RED)Plugin $$plugin_name tests failed$(NC)\n"); \
 		fi; \
 	done
 
@@ -341,7 +377,7 @@ test-tools:
 		if [ -d "$$tool_dir" ] && [ -f "$$tool_dir/go.mod" ]; then \
 			tool_name=$$(basename "$$tool_dir"); \
 			printf "$(YELLOW)Testing tool: $$tool_name$(NC)\n"; \
-			(cd "$$tool_dir" && go test -v ./... || printf "$(RED)Tool $$tool_name tests failed$(NC)\n"); \
+			(cd "$$tool_dir" && GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) go test $(GO_MOD_FLAGS) -v ./... || printf "$(RED)Tool $$tool_name tests failed$(NC)\n"); \
 		fi; \
 	done
 
@@ -365,7 +401,7 @@ build-tool-%:
 		printf "$(RED)Error: Tool directory $(TOOLS_DIR)/$$tool_name not found.$(NC)\n"; \
 		exit 1; \
 	fi; \
-	(cd "$(TOOLS_DIR)/$$tool_name" && go build -o $$tool_name .); \
+	(cd "$(TOOLS_DIR)/$$tool_name" && GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) go build $(GO_MOD_FLAGS) -o $$tool_name .); \
 	printf "$(GREEN)Tool $$tool_name built successfully!$(NC)\n"
 
 # Build plugin debug tool specifically
@@ -567,8 +603,8 @@ fmt:
 		printf "$(YELLOW)Installing goimports...$(NC)\n"; \
 		go install golang.org/x/tools/cmd/goimports@v0.20.0; \
 	fi
-	go fmt ./...
-	goimports -w .
+	GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) go fmt $(GO_MOD_FLAGS) ./...
+	GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) goimports -w .
 	@printf "$(GREEN)Code formatting completed!$(NC)\n"
 
 # Lint code with auto-fix formatting
@@ -578,7 +614,7 @@ lint: fmt
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
 		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
 	fi
-	golangci-lint run --timeout=5m
+	GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) golangci-lint run --timeout=5m
 	@printf "$(GREEN)Linting completed!$(NC)\n"
 
 # Lint with auto-fix (fixes what can be fixed automatically)
@@ -588,7 +624,7 @@ lint-fix: fmt
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
 		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
 	fi
-	golangci-lint run --timeout=5m --fix
+	GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) golangci-lint run --timeout=5m --fix
 	@printf "$(GREEN)Linting with auto-fix completed!$(NC)\n"
 
 # Security scan
