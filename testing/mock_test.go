@@ -3,21 +3,21 @@ package testing
 import (
 	"testing"
 
-	"github.com/metalmon/yapay-sdk"
+	yapaysdk "github.com/metalmon/yapay-sdk"
 	"github.com/stretchr/testify/assert"
 )
 
 // TestMockClientHandlerImplementsInterface tests that MockClientHandler implements PaymentEventHandler interface
 func TestMockClientHandlerImplementsInterface(t *testing.T) {
 	// This test will fail at compile time if MockClientHandler doesn't implement PaymentEventHandler
-	var handler yapay.PaymentEventHandler = NewMockClientHandler()
+	var handler yapaysdk.PaymentEventHandler = NewMockClientHandler()
 	assert.NotNil(t, handler)
 }
 
 // TestMockPaymentGeneratorImplementsInterface tests that MockPaymentGenerator implements PaymentLinkGenerator interface
 func TestMockPaymentGeneratorImplementsInterface(t *testing.T) {
 	// This test will fail at compile time if MockPaymentGenerator doesn't implement PaymentLinkGenerator
-	var generator yapay.PaymentLinkGenerator = NewMockPaymentGenerator()
+	var generator yapaysdk.PaymentLinkGenerator = NewMockPaymentGenerator()
 	assert.NotNil(t, generator)
 }
 

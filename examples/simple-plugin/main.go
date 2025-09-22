@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/metalmon/yapay-sdk"
+	yapaysdk "github.com/metalmon/yapay-sdk"
 	"github.com/sirupsen/logrus"
 )
 
@@ -25,13 +25,13 @@ import (
 
 // Handler represents a simple plugin handler
 type Handler struct {
-	merchant *yapay.Merchant
+	merchant *yapaysdk.Merchant
 	logger   *logrus.Logger
 	// generator field removed as it's not used in PaymentEventHandler interface
 }
 
 // NewHandler creates a new handler (required function)
-func NewHandler(merchant *yapay.Merchant) interface{} {
+func NewHandler(merchant *yapaysdk.Merchant) interface{} {
 	logger := logrus.New()
 	logger.WithFields(logrus.Fields{
 		"merchant_id": merchant.Yandex.MerchantID,
@@ -45,7 +45,7 @@ func NewHandler(merchant *yapay.Merchant) interface{} {
 }
 
 // OnPaymentCreated handles payment creation (implements PaymentEventHandler)
-func (h *Handler) OnPaymentCreated(payment *yapay.Payment) error {
+func (h *Handler) OnPaymentCreated(payment *yapaysdk.Payment) error {
 	h.logger.WithFields(logrus.Fields{
 		"payment_id":  payment.ID,
 		"order_id":    payment.OrderID,
@@ -61,7 +61,7 @@ func (h *Handler) OnPaymentCreated(payment *yapay.Payment) error {
 }
 
 // OnPaymentSuccess handles successful payment (implements PaymentEventHandler)
-func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
+func (h *Handler) OnPaymentSuccess(payment *yapaysdk.Payment) error {
 	// Determine environment for different handling
 	environment := payment.Environment
 	if environment == "" {
@@ -100,7 +100,7 @@ func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
 }
 
 // OnPaymentFailed handles failed payment (implements PaymentEventHandler)
-func (h *Handler) OnPaymentFailed(payment *yapay.Payment) error {
+func (h *Handler) OnPaymentFailed(payment *yapaysdk.Payment) error {
 	environment := payment.Environment
 	if environment == "" {
 		environment = "unknown"
@@ -135,7 +135,7 @@ func (h *Handler) OnPaymentFailed(payment *yapay.Payment) error {
 }
 
 // OnPaymentCanceled handles canceled payment (implements PaymentEventHandler)
-func (h *Handler) OnPaymentCanceled(payment *yapay.Payment) error {
+func (h *Handler) OnPaymentCanceled(payment *yapaysdk.Payment) error {
 	environment := payment.Environment
 	if environment == "" {
 		environment = "unknown"
@@ -170,17 +170,17 @@ func (h *Handler) OnPaymentCanceled(payment *yapay.Payment) error {
 
 // GetSDKVersion returns the SDK version this plugin was built against (implements VersionedPlugin)
 func (h *Handler) GetSDKVersion() string {
-	return yapay.GetSDKVersion()
+	return yapaysdk.GetSDKVersion()
 }
 
 // Example of how to implement payment link generation
 type PaymentGenerator struct {
-	merchant *yapay.Merchant
+	merchant *yapaysdk.Merchant
 	logger   *logrus.Logger
 }
 
 // NewPaymentGenerator creates a new payment generator (optional function)
-func NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.PaymentLinkGenerator {
+func NewPaymentGenerator(merchant *yapaysdk.Merchant, logger *logrus.Logger) yapaysdk.PaymentLinkGenerator {
 	return &PaymentGenerator{
 		merchant: merchant,
 		logger:   logger,
@@ -188,7 +188,7 @@ func NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.
 }
 
 // GeneratePaymentData generates payment data
-func (g *PaymentGenerator) GeneratePaymentData(req *yapay.PaymentRequest) (*yapay.PaymentGenerationResult, error) {
+func (g *PaymentGenerator) GeneratePaymentData(req *yapaysdk.PaymentRequest) (*yapaysdk.PaymentGenerationResult, error) {
 	g.logger.WithFields(logrus.Fields{
 		"amount":      req.Amount,
 		"description": req.Description,
@@ -211,7 +211,7 @@ func (g *PaymentGenerator) GeneratePaymentData(req *yapay.PaymentRequest) (*yapa
 		"metadata":    req.Metadata,
 	}
 
-	result := &yapay.PaymentGenerationResult{
+	result := &yapaysdk.PaymentGenerationResult{
 		PaymentData: paymentData,
 		OrderID:     orderID,
 		Amount:      req.Amount,
@@ -231,7 +231,7 @@ func (g *PaymentGenerator) GeneratePaymentData(req *yapay.PaymentRequest) (*yapa
 }
 
 // ValidatePriceFromBackend validates price from backend
-func (g *PaymentGenerator) ValidatePriceFromBackend(req *yapay.PaymentRequest) error {
+func (g *PaymentGenerator) ValidatePriceFromBackend(req *yapaysdk.PaymentRequest) error {
 	g.logger.WithField("amount", req.Amount).Debug("Price validation skipped - using frontend data as-is")
 
 	// Example: Check price against your backend
@@ -258,8 +258,8 @@ func (g *PaymentGenerator) ValidatePriceFromBackend(req *yapay.PaymentRequest) e
 }
 
 // GetPaymentSettings returns payment settings
-func (g *PaymentGenerator) GetPaymentSettings() *yapay.PaymentSettings {
-	return &yapay.PaymentSettings{
+func (g *PaymentGenerator) GetPaymentSettings() *yapaysdk.PaymentSettings {
+	return &yapaysdk.PaymentSettings{
 		Currency:           g.merchant.Yandex.Currency,
 		SandboxMode:        g.merchant.Yandex.SandboxMode,
 		AutoConfirmTimeout: 30, //nolint:mnd // 30 seconds for testing

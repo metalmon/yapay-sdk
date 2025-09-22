@@ -7,7 +7,7 @@ import (
 	"os"
 	"plugin"
 
-	"github.com/metalmon/yapay-sdk"
+	yapaysdk "github.com/metalmon/yapay-sdk"
 	"github.com/metalmon/yapay-sdk/testing"
 	"gopkg.in/yaml.v3"
 )
@@ -43,13 +43,13 @@ func main() {
 		log.Fatalf("Plugin does not export NewHandler function: %v", err)
 	}
 
-	newHandler, ok := newHandlerSym.(func(*yapay.Merchant) interface{})
+	newHandler, ok := newHandlerSym.(func(*yapaysdk.Merchant) interface{})
 	if !ok {
-		log.Fatalf("NewHandler has wrong signature: expected func(*yapay.Merchant) interface{}")
+		log.Fatalf("NewHandler has wrong signature: expected func(*yapaysdk.Merchant) interface{}")
 	}
 
 	// Load config if provided
-	var merchant *yapay.Merchant
+	var merchant *yapaysdk.Merchant
 	if *configPath != "" {
 		fmt.Printf("Loading config: %s\n", *configPath)
 		merchant, err = loadConfig(*configPath)
@@ -82,7 +82,7 @@ func main() {
 }
 
 func showHelp() {
-	fmt.Printf("Plugin Debug Tool - YAPAY SDK v%s\n", yapay.GetSDKVersion())
+	fmt.Printf("Plugin Debug Tool - YAPAY SDK v%s\n", yapaysdk.GetSDKVersion())
 	fmt.Println("")
 	fmt.Println("Usage:")
 	fmt.Println("  plugin-debug -plugin <plugin.so> [-config <config.yaml>] [-verbose]")
@@ -102,13 +102,13 @@ func showHelp() {
 	fmt.Println("  plugin-debug -plugin ./my-plugin.so -config ./config.yaml -verbose")
 }
 
-func loadConfig(configPath string) (*yapay.Merchant, error) {
+func loadConfig(configPath string) (*yapaysdk.Merchant, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %v", err)
 	}
 
-	var merchant yapay.Merchant
+	var merchant yapaysdk.Merchant
 	if err := yaml.Unmarshal(data, &merchant); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %v", err)
 	}
@@ -118,17 +118,17 @@ func loadConfig(configPath string) (*yapay.Merchant, error) {
 
 func validateHandler(handler interface{}) error {
 	// Check if handler implements PaymentEventHandler interface
-	if _, ok := handler.(yapay.PaymentEventHandler); !ok {
+	if _, ok := handler.(yapaysdk.PaymentEventHandler); !ok {
 		return fmt.Errorf("handler does not implement PaymentEventHandler interface")
 	}
 
 	// Check if handler implements VersionedPlugin interface
-	if _, ok := handler.(yapay.VersionedPlugin); !ok {
+	if _, ok := handler.(yapaysdk.VersionedPlugin); !ok {
 		return fmt.Errorf("handler does not implement VersionedPlugin interface")
 	}
 
 	// Test version reporting
-	versionedHandler := handler.(yapay.VersionedPlugin)
+	versionedHandler := handler.(yapaysdk.VersionedPlugin)
 	sdkVersion := versionedHandler.GetSDKVersion()
 	if sdkVersion == "" {
 		return fmt.Errorf("GetSDKVersion() returned empty string")
@@ -143,13 +143,13 @@ func runTests(handler interface{}) {
 	fmt.Println("\n🧪 Running tests...")
 
 	// Test interface implementations
-	if _, ok := handler.(yapay.PaymentEventHandler); ok {
+	if _, ok := handler.(yapaysdk.PaymentEventHandler); ok {
 		fmt.Println("✅ PaymentEventHandler interface implemented")
 	} else {
 		fmt.Println("❌ PaymentEventHandler interface not implemented")
 	}
 
-	if _, ok := handler.(yapay.VersionedPlugin); ok {
+	if _, ok := handler.(yapaysdk.VersionedPlugin); ok {
 		fmt.Println("✅ VersionedPlugin interface implemented")
 	} else {
 		fmt.Println("❌ VersionedPlugin interface not implemented")
@@ -160,7 +160,7 @@ func runTests(handler interface{}) {
 	testData := testing.NewTestData()
 	payment := testData.CreateTestPayment()
 
-	eventHandler := handler.(yapay.PaymentEventHandler)
+	eventHandler := handler.(yapaysdk.PaymentEventHandler)
 
 	if err := eventHandler.OnPaymentCreated(payment); err != nil {
 		fmt.Printf("❌ OnPaymentCreated failed: %v\n", err)

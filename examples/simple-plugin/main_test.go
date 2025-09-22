@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/metalmon/yapay-sdk"
+	yapaysdk "github.com/metalmon/yapay-sdk"
 	yapaytesting "github.com/metalmon/yapay-sdk/testing"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -21,9 +21,9 @@ func TestNewHandler(t *testing.T) {
 
 	// Verify handler implements interfaces
 	handlerTyped := handler.(*Handler)
-	var _ yapay.PaymentEventHandler = handlerTyped
-	var _ yapay.VersionedPlugin = handlerTyped
-	assert.Equal(t, yapay.GetSDKVersion(), handlerTyped.GetSDKVersion())
+	var _ yapaysdk.PaymentEventHandler = handlerTyped
+	var _ yapaysdk.VersionedPlugin = handlerTyped
+	assert.Equal(t, yapaysdk.GetSDKVersion(), handlerTyped.GetSDKVersion())
 }
 
 func TestHandler_OnPaymentCreated(t *testing.T) {
@@ -108,13 +108,13 @@ func TestHandler_ValidateRequest_Removed(t *testing.T) {
 	t.Skip("ValidateRequest method was removed from PaymentEventHandler interface")
 	/* testCases := []struct {
 		name          string
-		request       *yapay.PaymentRequest
+		request       *yapaysdk.PaymentRequest
 		expectedError bool
 		errorMessage  string
 	}{
 		{
 			name: "valid request",
-			request: &yapay.PaymentRequest{
+			request: &yapaysdk.PaymentRequest{
 				Amount:      1000,
 				Description: "Valid payment",
 				ReturnURL:   "https://example.com/return",
@@ -124,7 +124,7 @@ func TestHandler_ValidateRequest_Removed(t *testing.T) {
 		},
 		{
 			name: "negative amount",
-			request: &yapay.PaymentRequest{
+			request: &yapaysdk.PaymentRequest{
 				Amount:      -100,
 				Description: "Invalid payment",
 				ReturnURL:   "https://example.com/return",
@@ -134,7 +134,7 @@ func TestHandler_ValidateRequest_Removed(t *testing.T) {
 		},
 		{
 			name: "zero amount",
-			request: &yapay.PaymentRequest{
+			request: &yapaysdk.PaymentRequest{
 				Amount:      0,
 				Description: "Invalid payment",
 				ReturnURL:   "https://example.com/return",
@@ -144,7 +144,7 @@ func TestHandler_ValidateRequest_Removed(t *testing.T) {
 		},
 		{
 			name: "empty description",
-			request: &yapay.PaymentRequest{
+			request: &yapaysdk.PaymentRequest{
 				Amount:      1000,
 				Description: "",
 				ReturnURL:   "https://example.com/return",
@@ -156,7 +156,7 @@ func TestHandler_ValidateRequest_Removed(t *testing.T) {
 		// URL can be configured in merchant's personal account
 		{
 			name: "large amount",
-			request: &yapay.PaymentRequest{
+			request: &yapaysdk.PaymentRequest{
 				Amount:      100000000, // 1 million rubles
 				Description: "Large payment",
 				ReturnURL:   "https://example.com/return",
@@ -232,7 +232,7 @@ func TestNewPaymentGenerator(t *testing.T) {
 	generator := NewPaymentGenerator(merchant, nil)
 
 	// Verify generator implements interface
-	var _ yapay.PaymentLinkGenerator = generator
+	var _ yapaysdk.PaymentLinkGenerator = generator
 
 	// Verify generator properties
 	assert.Equal(t, merchant, generator.(*PaymentGenerator).merchant)
@@ -429,7 +429,7 @@ func TestPaymentGenerator_GeneratePaymentData_DifferentCurrencies(t *testing.T) 
 	amounts := []int{1000, 100, 50} // Different amounts in kopecks/cents
 
 	for i, currency := range currencies {
-		request := &yapay.PaymentRequest{
+		request := &yapaysdk.PaymentRequest{
 			Amount:      amounts[i],
 			Currency:    currency,
 			Description: "Test payment",

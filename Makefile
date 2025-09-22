@@ -19,13 +19,15 @@ DOCKER_VOLUME := $(PWD):$(WORKSPACE_PATH)
 DOCKER_WORKDIR := $(WORKSPACE_PATH)
 
 # Builder dependencies path (from builder image - always /app)
+# In devcontainer, use local vendor directory
 BUILDER_DEPS_PATH := /app
 
 # Environment-specific configurations
 ifeq ($(DETECT_ENV),devcontainer)
 	# Running in devcontainer - direct build available, no Docker needed
 	BUILD_MODE := direct
-	ENV_INFO := "Alpine devcontainer - direct build "
+	ENV_INFO := "Alpine"
+	BUILDER_DEPS_PATH := /app
 else
 	# Running on host or in other container - use Docker builder
 	BUILD_MODE := docker
@@ -138,9 +140,10 @@ build-plugins:
 				printf "Building plugin: $$plugin_name\n"; \
 				mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
 				rm -f "$$plugin_dir/$$plugin_name.so"; \
-				(cd "$$plugin_dir" && cp $(BUILDER_DEPS_PATH)/go.mod . && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
-					-mod=vendor \
+				(cd "$$plugin_dir" && rm -rf vendor && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOCACHE=/tmp/go-build GOOS=linux GOARCH=amd64 go build \
+					-mod=mod \
 					-buildmode=plugin \
+					-buildvcs=false \
 					-buildvcs=false \
 					-ldflags="-w -s" \
 					-o $$plugin_name.so \
@@ -176,8 +179,8 @@ build-plugins:
 					printf "Building plugin: $$plugin_name\n"; \
 					mkdir -p $(OUTPUT_DIR)/$$plugin_name; \
 					rm -f "$$plugin_dir/$$plugin_name.so"; \
-					(cd "$$plugin_dir" && cp $(BUILDER_DEPS_PATH)/go.mod . && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
-						-mod=vendor \
+					(cd "$$plugin_dir" && cp $(BUILDER_DEPS_PATH)/go.mod . && sed -i 's/^module yapay$$/module $$plugin_name/' go.mod && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOCACHE=/tmp/go-build GOOS=linux GOARCH=amd64 go build \
+						-mod=readonly \
 						-buildmode=plugin \
 						-buildvcs=false \
 						-ldflags="-w -s" \
@@ -201,7 +204,7 @@ build-plugin-%:
 	printf "$(BLUE)Environment: $(ENV_INFO)$(NC)\n"; \
 	if [ "$(BUILD_MODE)" = "direct" ]; then \
 		printf "$(YELLOW)Direct build in devcontainer...$(NC)\n"; \
-		(cd "src/$$plugin_name" && cp $(BUILDER_DEPS_PATH)/go.mod . && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+		(cd "src/$$plugin_name" && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
 			-mod=vendor \
 			-buildmode=plugin \
 			-buildvcs=false \
@@ -231,7 +234,7 @@ build-plugin-%:
 			-e GOCACHE=/tmp/go-build \
 			-u $(shell id -u):$(shell id -g) \
 			$(DOCKER_IMAGE):$(BUILDER_TAG) \
-			sh -c 'cp $(BUILDER_DEPS_PATH)/go.mod . && cp $(BUILDER_DEPS_PATH)/go.sum . && cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
+			sh -c 'cp -r $(BUILDER_DEPS_PATH)/vendor . && CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
 				-mod=vendor \
 				-buildmode=plugin \
 				-buildvcs=false \

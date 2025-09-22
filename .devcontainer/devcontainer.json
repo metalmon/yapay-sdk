@@ -30,7 +30,14 @@
         },
         "files.eol": "\n",
         "files.insertFinalNewline": true,
-        "files.trimTrailingWhitespace": true
+        "files.trimTrailingWhitespace": true,
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash",
+            "args": ["-l"]
+          }
+        }
       },
       "extensions": [
         "golang.Go",
@@ -65,10 +72,14 @@
   // Configure tool-specific properties
   "remoteUser": "yapay",
   
+  // Set default shell to bash
+  "overrideCommand": false,
+  
   // Set environment variables for proper terminal support
   "containerEnv": {
     "TERM": "xterm-256color",
-    "COLORTERM": "truecolor"
+    "COLORTERM": "truecolor",
+    "SHELL": "/bin/bash"
   },
 
   // Use 'updateContentCommand' to run commands after the container is updated

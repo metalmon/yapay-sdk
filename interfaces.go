@@ -1,4 +1,4 @@
-package yapay
+package yapaysdk
 
 import (
 	"github.com/sirupsen/logrus"
@@ -43,6 +43,7 @@ type Merchant struct {
 	Yandex        YandexConfig           `json:"yandex" yaml:"yandex"`
 	Notifications NotificationConfig     `json:"notifications" yaml:"notifications"`
 	FieldLabels   FieldLabels            `json:"field_labels,omitempty" yaml:"field_labels,omitempty"`
+	Plugin        PluginConfig           `json:"plugin,omitempty" yaml:"plugin,omitempty"`
 }
 
 // SecurityConfig represents per-merchant security configuration
@@ -78,6 +79,12 @@ type NotificationConfig struct {
 
 // FieldLabels represents field labels for order metadata in notifications
 type FieldLabels map[string]string
+
+// PluginConfig represents plugin configuration
+type PluginConfig struct {
+	Type string `json:"type" yaml:"type"`                     // "builtin", "so", "grpc"
+	Path string `json:"path,omitempty" yaml:"path,omitempty"` // Path to plugin file (for so/grpc)
+}
 
 // TelegramConfig represents Telegram notification configuration
 type TelegramConfig struct {

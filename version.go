@@ -1,8 +1,8 @@
-package yapay
+package yapaysdk
 
 // SDKVersion represents the current SDK version
 const (
-	SDKVersion       = "1.0.8"
+	SDKVersion       = "1.0.9"
 	SDKVersionString = "v" + SDKVersion
 )
 
