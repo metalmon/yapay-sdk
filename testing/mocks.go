@@ -174,7 +174,9 @@ func (m *MockPaymentGenerator) SetCustomizePayloadError(err error) {
 }
 
 // GeneratePaymentData records the call and returns the configured result
-func (m *MockPaymentGenerator) GeneratePaymentData(req *yapaysdk.PaymentRequest) (*yapaysdk.PaymentGenerationResult, error) {
+func (m *MockPaymentGenerator) GeneratePaymentData(
+	req *yapaysdk.PaymentRequest,
+) (*yapaysdk.PaymentGenerationResult, error) {
 	m.GeneratePaymentDataCalls = append(m.GeneratePaymentDataCalls, req)
 	return m.GeneratePaymentDataResult, m.GeneratePaymentDataError
 }
