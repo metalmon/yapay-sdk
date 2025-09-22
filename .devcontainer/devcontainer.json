@@ -53,6 +53,9 @@
   // Use 'forwardPorts' to make a list of ports inside the container available locally
   "forwardPorts": [8080, 8083, 2345],
 
+  // Use 'beforeCreateCommand' to run commands before the container is created
+  "beforeCreateCommand": "echo 'Updating Docker images before container creation...' && docker pull metalmon/yapay:builder && docker pull metalmon/yapay:dev && echo 'Docker images updated successfully'",
+
   // Use 'postCreateCommand' to run commands after the container is created
   "postCreateCommand": "echo 'YAPAY SDK Devcontainer created successfully'",
 
