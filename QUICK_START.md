@@ -63,7 +63,7 @@ go 1.24.0
 toolchain go1.24.7
 
 require (
-    github.com/metalmon/yapay-sdk v1.0.10
+    github.com/metalmon/yapay-sdk v1.0.11
     github.com/sirupsen/logrus v1.9.3
 )
 

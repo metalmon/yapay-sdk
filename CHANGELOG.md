@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plugin development tools and examples
 - Comprehensive documentation
 
+## [1.0.11] - 2025-09-23
+
+### Added
+
+- **Support for SDK version 1.0.11** - добавлена поддержка новой версии SDK
+- **Version compatibility detection** - автоматическое определение версии SDK в плагинах
+- **Enhanced version adapter** - улучшенный адаптер версий для совместимости
+
+### Changed
+
+- **Updated all projects to v1.0.11** - все проекты обновлены на версию 1.0.11
+- **Fixed checksum mismatch issues** - исправлены проблемы с несовпадением хешей
+- **Improved Dockerfile.builder** - улучшен builder образ для стабильной сборки
+
+### Fixed
+
+- **Checksum verification errors** - исправлены ошибки проверки контрольных сумм
+- **Version detection in plugins** - корректное определение версии SDK в плагинах
+- **Builder image consistency** - обеспечена консистентность builder образа
+
 ## [1.0.10] - 2025-09-23
 
 ### Added
