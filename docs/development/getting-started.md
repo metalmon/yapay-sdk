@@ -29,6 +29,37 @@ func NewHandler(merchant *yapay.Merchant) interface{}
 func NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.PaymentLinkGenerator
 ```
 
+## ⚠️ КРИТИЧЕСКИ ВАЖНО: Управление зависимостями
+
+### НЕ используйте команды изменения зависимостей
+
+**ЗАПРЕЩЕНО:**
+- `go mod tidy` - удаляет replace директивы
+- `go get package@version` - изменяет версии зависимостей  
+- `go mod download` - может нарушить прогретый кеш
+- `go clean -modcache` - очищает кеш модулей
+
+**Почему это ломает ABI:**
+- Builder image содержит прогретый кеш с эталонными версиями
+- Любые изменения нарушают совместимость с сервером
+- Плагины перестают загружаться
+
+**Разрешенные команды (только чтение):**
+```bash
+go mod verify          # Проверка целостности
+go mod why package     # Анализ зависимостей  
+go list -m all         # Просмотр версий
+```
+
+**При проблемах с зависимостями:**
+```bash
+# Восстановите из эталонного go.mod
+cp ../yapay-sdk/examples/simple-plugin/go.mod ./go.mod
+
+# Пересоберите плагин (кеш уже прогрет)
+make build-plugin-my-plugin
+```
+
 ## Создание нового плагина
 
 ### 1. Инициализация проекта
@@ -38,8 +69,7 @@ func NewPaymentGenerator(merchant *yapay.Merchant, logger *logrus.Logger) yapay.
 make new-plugin-my-plugin
 cd src/my-plugin
 
-# Плагин уже настроен с правильными зависимостями
-go get github.com/metalmon/yapay-sdk@latest
+# Плагин уже настроен с правильными зависимостями из эталонного go.mod
 ```
 
 ### 2. Базовая структура main.go

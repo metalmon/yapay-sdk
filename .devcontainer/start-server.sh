@@ -23,8 +23,8 @@ echo -e "${YELLOW}📦 Skipping plugin build in SDK devcontainer. Plugins direct
 
 # Set up environment variables
 export PORT=${PORT:-8080}
-export LOG_LEVEL=${LOG_LEVEL:-debug}
-export GIN_MODE=${GIN_MODE:-debug}
+export LOG_LEVEL=${LOG_LEVEL:-info}  # info level for SDK development (less noise than debug)
+export GIN_MODE=${GIN_MODE:-release}  # release mode for SDK development (less HTTP noise than debug)
 export YANDEX_SANDBOX_MODE=${YANDEX_SANDBOX_MODE:-true}
 export METRICS_PORT=${METRICS_PORT:-8081}
 export METRICS_REQUIRE_AUTH=${METRICS_REQUIRE_AUTH:-false}

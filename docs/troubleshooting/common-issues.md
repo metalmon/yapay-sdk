@@ -1,5 +1,38 @@
 # Частые проблемы и их решения
 
+## ⚠️ ВАЖНО: Управление зависимостями
+
+### НЕ используйте команды изменения зависимостей
+
+**КРИТИЧЕСКИ ВАЖНО**: Никогда не изменяйте зависимости в проектах с Yapay SDK!
+
+**Запрещенные команды:**
+- `go mod tidy` - удаляет replace директивы
+- `go get package@version` - изменяет версии зависимостей
+- `go mod download` - может нарушить прогретый кеш
+- `go clean -modcache` - очищает кеш модулей
+
+**Почему это ломает ABI:**
+- Builder image содержит прогретый кеш с эталонными версиями
+- Любые изменения нарушают совместимость с сервером
+- Плагины перестают загружаться
+
+**Разрешенные команды (только чтение):**
+```bash
+go mod verify          # Проверка целостности
+go mod why package     # Анализ зависимостей  
+go list -m all         # Просмотр версий
+```
+
+**При проблемах с зависимостями:**
+```bash
+# Восстановите из эталонного go.mod
+cp ../yapay-sdk/examples/simple-plugin/go.mod ./go.mod
+
+# Пересоберите плагин (кеш уже прогрет)
+make build-plugin-my-plugin
+```
+
 ## Проблемы с загрузкой плагинов
 
 ### Ошибка: "plugin was built with a different version of package"
@@ -23,11 +56,11 @@ Failed to load plugin: plugin.Open("plugins/my-plugin/my-plugin"): plugin was bu
    cat go.mod | grep yapay-sdk
    ```
 
-2. Обновите версию SDK в плагине:
+2. Восстановите зависимости из эталонного go.mod:
    ```bash
    cd plugins/my-plugin
-   go get github.com/metalmon/yapay-sdk@latest
-   go mod tidy
+   # Скопируйте эталонный go.mod
+   cp ../yapay-sdk/examples/simple-plugin/go.mod ./go.mod
    ```
 
 3. Пересоберите плагин:
