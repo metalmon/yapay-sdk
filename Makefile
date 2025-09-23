@@ -605,7 +605,7 @@ fmt:
 	@printf "$(GREEN)Formatting code...$(NC)\n"
 	@if ! command -v goimports >/dev/null 2>&1; then \
 		printf "$(YELLOW)Installing goimports...$(NC)\n"; \
-		go install golang.org/x/tools/cmd/goimports@v0.20.0; \
+		GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) go install golang.org/x/tools/cmd/goimports@v0.20.0; \
 	fi
 	@mkdir -p $(LOCAL_GOMODCACHE) $(LOCAL_GOCACHE)
 	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) go fmt $(GO_MOD_FLAGS) ./...
@@ -617,7 +617,7 @@ lint: fmt
 	@printf "$(GREEN)Linting code...$(NC)\n"
 	@if ! command -v golangci-lint >/dev/null 2>&1; then \
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
+		GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
 	fi
 	@mkdir -p $(LOCAL_GOMODCACHE) $(LOCAL_GOCACHE)
 	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) golangci-lint run --timeout=5m
@@ -628,7 +628,7 @@ lint-fix: fmt
 	@printf "$(GREEN)Linting code with auto-fix...$(NC)\n"
 	@if ! command -v golangci-lint >/dev/null 2>&1; then \
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
+		GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
 	fi
 	@mkdir -p $(LOCAL_GOMODCACHE) $(LOCAL_GOCACHE)
 	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) golangci-lint run --timeout=5m --fix

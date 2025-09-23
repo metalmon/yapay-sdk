@@ -19,11 +19,7 @@
 1. Откройте проект в VS Code
 2. Нажмите `Ctrl+Shift+P` (или `Cmd+Shift+P` на Mac)
 3. Выберите "Dev Containers: Reopen in Container"
-4. Дождитесь загрузки готового образа из Docker Hub
-
-### Варианты запуска
-- **По умолчанию**: Использует готовый образ `metalmon/yapay:dev` из Docker Hub (быстро)
-- **Локальная сборка**: Для тестирования изменений в Dockerfile используйте `docker-compose.build.yml`
+4. Дождитесь загрузки готового образа `metalmon/yapay:dev` из Docker Hub
 
 ## 🛠️ Включенные инструменты
 
@@ -94,7 +90,7 @@ make tunnel-url         # Получение URL туннеля
 
 2. **Пересоберите контейнеры:**
    ```bash
-   docker-compose -f .devcontainer/docker-compose.yml build --no-cache
+   docker-compose -f .devcontainer/docker-compose.yml pull
    ```
 
 3. **В VS Code:** `Ctrl+Shift+P` → "Dev Containers: Rebuild Container"
@@ -116,7 +112,7 @@ make tunnel-url         # Получение URL туннеля
 ## 🐳 Совместимость с Production
 
 DevContainer использует ту же Alpine среду, что и production Dockerfile:
-- **Base image**: `metalmon/yapay:latest`
+- **Base image**: `metalmon/yapay:dev` (из Docker Hub)
 - **Runtime**: Alpine 3.18
 - **Architecture**: linux/amd64
 - **CGO**: Enabled (для плагинов)
@@ -158,10 +154,11 @@ curl http://localhost:8080/api/v1/plugins/
 2. **Пересобирайте плагины** после изменений: `make plugin-build`
 3. **Проверяйте совместимость** с production средой
 4. **Не отключайте CGO** - плагины требуют его для работы
+5. **Образ обновляется** через CI/CD и публикуется в Docker Hub
 
 ## 📞 Поддержка
 
 При возникновении проблем:
 1. Проверьте логи: `make logs`
-2. Пересоберите SDK: `make build`
+2. Обновите образ: `docker pull metalmon/yapay:dev`
 3. Перезапустите контейнер: `Ctrl+Shift+P` → "Dev Containers: Rebuild Container"
