@@ -8,6 +8,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Environment constants
+const (
+	EnvironmentUnknown    = "unknown"
+	EnvironmentSandbox    = "sandbox"
+	EnvironmentProduction = "production"
+)
+
 // This example demonstrates how to work with the Environment field in Payment struct.
 // The Environment field allows plugins to determine whether a payment came from
 // production or sandbox environment, enabling different handling logic.
@@ -22,6 +29,12 @@ import (
 // - Conditional service activation (only for production payments)
 // - Separate notification handling for test payments
 // - Environment-specific business logic
+//
+// LOGGING BEST PRACTICES:
+// - Server already logs: payment_id, amount, currency, status, merchant_id
+// - Plugins should log: environment, order_id, metadata fields, business context
+// - Use payment.Metadata for business-specific data (product_id, customer_id, etc.)
+// - Avoid duplicating server logs - focus on plugin-specific information
 
 // Handler represents a simple plugin handler
 type Handler struct {
@@ -44,6 +57,58 @@ func NewHandler(merchant *yapaysdk.Merchant) interface{} {
 	}
 }
 
+// getEnvironment returns the environment with fallback to unknown
+func getEnvironment(environment string) string {
+	if environment == "" {
+		return EnvironmentUnknown
+	}
+	return environment
+}
+
+// logPaymentEvent logs payment event with environment handling
+func (h *Handler) logPaymentEvent(payment *yapaysdk.Payment, event string, level logrus.Level) {
+	environment := getEnvironment(payment.Environment)
+
+	// Log only plugin-specific information (server already logs payment_id, amount, etc.)
+	fields := logrus.Fields{
+		"environment": environment,
+		"order_id":    payment.OrderID, // Plugin-specific order ID
+	}
+
+	// Add metadata if available (plugin-specific business context)
+	if payment.Metadata != nil {
+		if productID, exists := payment.Metadata["product_id"]; exists {
+			fields["product_id"] = productID
+		}
+		if customerID, exists := payment.Metadata["customer_id"]; exists {
+			fields["customer_id"] = customerID
+		}
+	}
+
+	// Use the appropriate log level
+	entry := h.logger.WithFields(fields)
+	switch level {
+	case logrus.WarnLevel:
+		entry.Warn(event)
+	case logrus.ErrorLevel:
+		entry.Error(event)
+	default: // InfoLevel and others
+		entry.Info(event)
+	}
+}
+
+// handleEnvironmentSpecificLogic handles environment-specific business logic
+func (h *Handler) handleEnvironmentSpecificLogic(environment, eventType string) {
+	switch environment {
+	case EnvironmentSandbox:
+		h.logger.WithField("event_type", eventType).Info("Processing sandbox payment - test mode")
+	case EnvironmentProduction:
+		h.logger.WithField("event_type", eventType).Info("Processing production payment - live mode")
+	default:
+		h.logger.WithField("event_type", eventType).Warn("Unknown payment environment - using default handling")
+	}
+}
+
 // OnPaymentCreated handles payment creation (implements PaymentEventHandler)
 func (h *Handler) OnPaymentCreated(payment *yapaysdk.Payment) error {
 	h.logger.WithFields(logrus.Fields{
@@ -62,108 +127,59 @@ func (h *Handler) OnPaymentCreated(payment *yapaysdk.Payment) error {
 
 // OnPaymentSuccess handles successful payment (implements PaymentEventHandler)
 func (h *Handler) OnPaymentSuccess(payment *yapaysdk.Payment) error {
-	// Determine environment for different handling
-	environment := payment.Environment
-	if environment == "" {
-		environment = "unknown" // Fallback for older webhooks without Environment field
-	}
+	environment := getEnvironment(payment.Environment)
+	h.logPaymentEvent(payment, "Payment success - activating services", logrus.InfoLevel)
+	h.handleEnvironmentSpecificLogic(environment, "success")
 
-	h.logger.WithFields(logrus.Fields{
-		"payment_id":  payment.ID,
-		"order_id":    payment.OrderID,
-		"amount":      payment.Amount,
-		"environment": environment,
-	}).Info("Payment successful")
-
-	// Handle different environments
-	switch environment {
-	case "sandbox":
-		h.logger.Info("Processing sandbox payment - test mode")
-		// Example: Log test payment, don't activate real services
-		// This is a test payment, so we might want to handle it differently
-
-	case "production":
-		h.logger.Info("Processing production payment - live mode")
-		// Example: Update order status, activate services, etc.
-		// This is a real payment, so activate actual services
-
-	default:
-		h.logger.Warn("Unknown payment environment - using default handling")
-		// Fallback for unknown environments
-	}
-
-	// Common logic for all environments
-	// Example: Update order status, send notifications, etc.
-	// Notifications are sent automatically by the server based on config.yaml
+	// TODO: Implement your business logic here
+	// Examples:
+	// - Send confirmation email to customer
+	// - Update order status in your database
+	// - Activate subscription/service
+	// - Update inventory
+	// - Send notification to admin
+	//
+	// Access payment.Metadata for business-specific data:
+	// - product_id, customer_id, subscription_id, etc.
+	// - Use environment to determine if this is test or production
 
 	return nil
 }
 
 // OnPaymentFailed handles failed payment (implements PaymentEventHandler)
 func (h *Handler) OnPaymentFailed(payment *yapaysdk.Payment) error {
-	environment := payment.Environment
-	if environment == "" {
-		environment = "unknown"
-	}
+	environment := getEnvironment(payment.Environment)
+	h.logPaymentEvent(payment, "Payment failed - handling failure", logrus.WarnLevel)
+	h.handleEnvironmentSpecificLogic(environment, "failed")
 
-	h.logger.WithFields(logrus.Fields{
-		"payment_id":  payment.ID,
-		"order_id":    payment.OrderID,
-		"amount":      payment.Amount,
-		"environment": environment,
-	}).Warn("Payment failed")
-
-	// Handle different environments for failed payments
-	switch environment {
-	case "sandbox":
-		h.logger.Info("Sandbox payment failed - test mode")
-		// Example: Log test failure, don't send real notifications
-
-	case "production":
-		h.logger.Info("Production payment failed - live mode")
-		// Example: Log failure, update order status, send notifications, etc.
-
-	default:
-		h.logger.Warn("Unknown payment environment - using default handling")
-	}
-
-	// Common logic for all environments
-	// Example: Log failure, update order status, etc.
-	// Notifications are sent automatically by the server based on config.yaml
+	// TODO: Implement your failure handling logic here
+	// Examples:
+	// - Log failure reason for analysis
+	// - Send notification to customer about failed payment
+	// - Update order status to "failed"
+	// - Release reserved inventory
+	// - Send alert to admin
+	//
+	// Use environment to determine if this is test or production failure
 
 	return nil
 }
 
 // OnPaymentCanceled handles canceled payment (implements PaymentEventHandler)
 func (h *Handler) OnPaymentCanceled(payment *yapaysdk.Payment) error {
-	environment := payment.Environment
-	if environment == "" {
-		environment = "unknown"
-	}
+	environment := getEnvironment(payment.Environment)
+	h.logPaymentEvent(payment, "Payment canceled - releasing resources", logrus.InfoLevel)
+	h.handleEnvironmentSpecificLogic(environment, "canceled")
 
-	h.logger.WithFields(logrus.Fields{
-		"payment_id":  payment.ID,
-		"order_id":    payment.OrderID,
-		"amount":      payment.Amount,
-		"environment": environment,
-	}).Info("Payment canceled")
-
-	// Handle different environments for canceled payments
-	switch environment {
-	case "sandbox":
-		h.logger.Info("Sandbox payment canceled - test mode")
-		// Example: Log test cancellation, don't release real inventory
-
-	case "production":
-		h.logger.Info("Production payment canceled - live mode")
-		// Example: Release reserved inventory, send notification, etc.
-
-	default:
-		h.logger.Warn("Unknown payment environment - using default handling")
-	}
-
-	// Common logic for all environments
-	// Example: Release reserved inventory, send notification, etc.
+	// TODO: Implement your cancellation handling logic here
+	// Examples:
+	// - Release reserved inventory
+	// - Cancel pending orders
+	// - Send cancellation notification
+	// - Update order status to "canceled"
+	// - Refund any pre-authorization
+	//
+	// Use environment to determine if this is test or production cancellation
 
 	return nil
 }
@@ -188,7 +204,9 @@ func NewPaymentGenerator(merchant *yapaysdk.Merchant, logger *logrus.Logger) yap
 }
 
 // GeneratePaymentData generates payment data
-func (g *PaymentGenerator) GeneratePaymentData(req *yapaysdk.PaymentRequest) (*yapaysdk.PaymentGenerationResult, error) {
+func (g *PaymentGenerator) GeneratePaymentData(
+	req *yapaysdk.PaymentRequest,
+) (*yapaysdk.PaymentGenerationResult, error) {
 	g.logger.WithFields(logrus.Fields{
 		"amount":      req.Amount,
 		"description": req.Description,
