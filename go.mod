@@ -15,3 +15,6 @@ require (
 	golang.org/x/sys v0.36.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+// Replace директива для синхронизации версии golang.org/x/sys
+replace golang.org/x/sys => golang.org/x/sys v0.36.0
