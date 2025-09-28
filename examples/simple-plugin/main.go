@@ -30,11 +30,12 @@ const (
 // - Separate notification handling for test payments
 // - Environment-specific business logic
 //
-// LOGGING BEST PRACTICES:
+// LOGGING BEST PRACTICES (v1.0.11+):
 // - Server already logs: payment_id, amount, currency, status, merchant_id
-// - Plugins should log: environment, order_id, metadata fields, business context
+// - Plugins should use SEMANTIC LOGGING - include all data in the message
 // - Use payment.Metadata for business-specific data (product_id, customer_id, etc.)
-// - Avoid duplicating server logs - focus on plugin-specific information
+// - Avoid WithFields() - use Infof(), Warnf(), Errorf() instead
+// - Make logs self-sufficient - everything should be clear from the message
 
 // Handler represents a simple plugin handler
 type Handler struct {
@@ -46,10 +47,7 @@ type Handler struct {
 // NewHandler creates a new handler (required function)
 func NewHandler(merchant *yapaysdk.Merchant) interface{} {
 	logger := logrus.New()
-	logger.WithFields(logrus.Fields{
-		"merchant_id": merchant.Yandex.MerchantID,
-		"name":        merchant.Name,
-	}).Info("Simple plugin handler created")
+	logger.Infof("Simple plugin handler created - merchant: %s (%s)", merchant.Name, merchant.Yandex.MerchantID)
 
 	return &Handler{
 		merchant: merchant,
@@ -69,31 +67,34 @@ func getEnvironment(environment string) string {
 func (h *Handler) logPaymentEvent(payment *yapaysdk.Payment, event string, level logrus.Level) {
 	environment := getEnvironment(payment.Environment)
 
-	// Log only plugin-specific information (server already logs payment_id, amount, etc.)
-	fields := logrus.Fields{
-		"environment": environment,
-		"order_id":    payment.OrderID, // Plugin-specific order ID
-	}
-
-	// Add metadata if available (plugin-specific business context)
+	// Build semantic log message with plugin-specific information
+	var logMessage string
 	if payment.Metadata != nil {
 		if productID, exists := payment.Metadata["product_id"]; exists {
-			fields["product_id"] = productID
+			if customerID, exists := payment.Metadata["customer_id"]; exists {
+				logMessage = fmt.Sprintf("%s - environment: %s, order_id: %s, product_id: %v, customer_id: %v",
+					event, environment, payment.OrderID, productID, customerID)
+			} else {
+				logMessage = fmt.Sprintf("%s - environment: %s, order_id: %s, product_id: %v",
+					event, environment, payment.OrderID, productID)
+			}
+		} else {
+			logMessage = fmt.Sprintf("%s - environment: %s, order_id: %s",
+				event, environment, payment.OrderID)
 		}
-		if customerID, exists := payment.Metadata["customer_id"]; exists {
-			fields["customer_id"] = customerID
-		}
+	} else {
+		logMessage = fmt.Sprintf("%s - environment: %s, order_id: %s",
+			event, environment, payment.OrderID)
 	}
 
 	// Use the appropriate log level
-	entry := h.logger.WithFields(fields)
 	switch level {
 	case logrus.WarnLevel:
-		entry.Warn(event)
+		h.logger.Warn(logMessage)
 	case logrus.ErrorLevel:
-		entry.Error(event)
+		h.logger.Error(logMessage)
 	default: // InfoLevel and others
-		entry.Info(event)
+		h.logger.Info(logMessage)
 	}
 }
 
@@ -101,23 +102,18 @@ func (h *Handler) logPaymentEvent(payment *yapaysdk.Payment, event string, level
 func (h *Handler) handleEnvironmentSpecificLogic(environment, eventType string) {
 	switch environment {
 	case EnvironmentSandbox:
-		h.logger.WithField("event_type", eventType).Info("Processing sandbox payment - test mode")
+		h.logger.Infof("Processing sandbox payment - test mode, event: %s", eventType)
 	case EnvironmentProduction:
-		h.logger.WithField("event_type", eventType).Info("Processing production payment - live mode")
+		h.logger.Infof("Processing production payment - live mode, event: %s", eventType)
 	default:
-		h.logger.WithField("event_type", eventType).Warn("Unknown payment environment - using default handling")
+		h.logger.Warnf("Unknown payment environment - using default handling, event: %s", eventType)
 	}
 }
 
 // OnPaymentCreated handles payment creation (implements PaymentEventHandler)
 func (h *Handler) OnPaymentCreated(payment *yapaysdk.Payment) error {
-	h.logger.WithFields(logrus.Fields{
-		"payment_id":  payment.ID,
-		"order_id":    payment.OrderID,
-		"amount":      payment.Amount,
-		"currency":    payment.Currency,
-		"description": payment.Description,
-	}).Info("Payment created")
+	h.logger.Infof("Payment created - ID: %s, order_id: %s, amount: %d %s, description: %s",
+		payment.ID, payment.OrderID, payment.Amount, payment.Currency, payment.Description)
 
 	// Example: Save to database, send notification, etc.
 	// This is where you implement your business logic

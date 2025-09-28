@@ -354,7 +354,9 @@ make benchmark-plugin PLUGIN_NAME=simple-plugin CONFIG_PATH=../../examples/simpl
 
 ## Лучшие практики отладки
 
-### 1. Используйте структурированные логи с Environment
+### 1. Используйте семантически связанные логи
+
+**ВАЖНО:** С версии 1.0.11 сервер использует семантически связанные логи - все данные включаются в сообщение, а не в отдельные поля.
 
 ```go
 func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
@@ -364,19 +366,29 @@ func (h *Handler) OnPaymentSuccess(payment *yapay.Payment) error {
         environment = "unknown" // Fallback для старых webhook'ов
     }
 
-    h.logger.WithFields(logrus.Fields{
-        "payment_id":  payment.ID,
-        "order_id":    payment.OrderID,
-        "amount":      payment.Amount,
-        "status":      payment.Status,
-        "environment": environment, // Важно для отладки!
-    }).Info("Processing successful payment")
+    // СЕМАНТИЧЕСКИ СВЯЗАННЫЕ ЛОГИ - все данные в сообщении
+    h.logger.Infof("Payment success processed - environment: %s, order_id: %s, amount: %d %s", 
+        environment, payment.OrderID, payment.Amount, payment.Currency)
+    
+    // Для сложных случаев с метаданными
+    if payment.Metadata != nil {
+        if productID, exists := payment.Metadata["product_id"]; exists {
+            h.logger.Infof("Product activated - product_id: %v, customer_id: %v, order_id: %s", 
+                productID, payment.Metadata["customer_id"], payment.OrderID)
+        }
+    }
     
     // Ваша логика...
     
     return nil
 }
 ```
+
+**Преимущества семантических логов:**
+- Логи самодостаточны - из сообщения понятно что происходит
+- Легче читать в терминале и файлах
+- Не нужно искать поля - вся информация в тексте
+- Совместимость с новым форматтером сервера
 
 ### 2. Добавляйте контекст в ошибки
 
