@@ -14,8 +14,23 @@ BUILDER_TAG := builder
 GOMODCACHE := /gomodcache
 GOCACHE := /tmp/gocache
 # Local cache for development tools (lint, fmt, etc.)
-LOCAL_GOMODCACHE := $(HOME)/.cache/go/mod
-LOCAL_GOCACHE := $(HOME)/.cache/go-build
+LOCAL_GOMODCACHE := $(shell go env GOCACHE)/mod
+LOCAL_GOCACHE := $(shell go env GOCACHE)
+
+# Universal PATH configuration for Go tools
+# Go tools path - where Go installs binaries
+GO_BIN_PATH := $(shell go env GOPATH)/bin
+
+# Universal PATH for Go tools (includes system paths for git, etc.)
+UNIVERSAL_PATH := $(GO_BIN_PATH):$(shell go env GOROOT)/bin:/usr/bin:/bin:/usr/local/bin
+
+# Universal function to run Go tools with proper environment
+# Usage: $(call run-go-tool,command)
+run-go-tool = PATH="$(UNIVERSAL_PATH)" $(1)
+
+# Universal function to run Go commands with proper environment and caches
+# Usage: $(call run-go-cmd,command)
+run-go-cmd = PATH="$(UNIVERSAL_PATH)" GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) GOPRIVATE=github.com/metalmon/yapay-sdk $(1)
 GO_MOD_FLAGS := -mod=mod
 GO_BUILD_FLAGS := -buildvcs=false -ldflags="-w -s"
 
@@ -23,8 +38,8 @@ GO_BUILD_FLAGS := -buildvcs=false -ldflags="-w -s"
 VERSIONS_FILE := versions.env
 
 # Universal Environment Detection and Path Configuration
-# Automatically detects environment: devcontainer, container, or host
-DETECT_ENV := $(shell if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then echo "devcontainer"; elif [ -f /.dockerenv ]; then echo "container"; else echo "host"; fi)
+# Automatically detects environment: devcontainer or host
+DETECT_ENV := $(shell if [ -f /.dockerenv ] && [ -f /etc/alpine-release ]; then echo "devcontainer"; else echo "host"; fi)
 
 # Universal workspace path - always use /workspace for consistency across all environments
 WORKSPACE_PATH := /workspace
@@ -38,13 +53,11 @@ BUILDER_DEPS_PATH := /app
 # Environment-specific configurations
 ifeq ($(DETECT_ENV),devcontainer)
 	# Running in devcontainer - direct build available, no Docker needed
-	BUILD_MODE := direct
-	ENV_INFO := "Alpine"
+	ENV_INFO := "Alpine devcontainer - direct build"
 	BUILDER_DEPS_PATH := /app
 else
-	# Running on host or in other container - use Docker builder
-	BUILD_MODE := docker
-	ENV_INFO := "Host/Container - Docker builder "
+	# Running on host - use Docker builder
+	ENV_INFO := "Host - Docker builder"
 endif
 
 # Colors
@@ -61,7 +74,6 @@ NC := \033[0m # No Color
 show-env:
 	@printf "$(GREEN)Environment Detection:$(NC)\n"
 	@printf "  Detected: $(DETECT_ENV)\n"
-	@printf "  Build Mode: $(BUILD_MODE)\n"
 	@printf "  Info: $(ENV_INFO)\n"
 	@printf "  Workspace: $(WORKSPACE_PATH)\n"
 	@printf "  Docker Volume: $(DOCKER_VOLUME)\n"
@@ -69,6 +81,9 @@ show-env:
 	@printf "  Current PWD: $(PWD)\n"
 	@printf "  Go Module Cache: $(GOMODCACHE)\n"
 	@printf "  Go Build Cache: $(GOCACHE)\n"
+	@printf "  Go Tools Path: $(GO_BIN_PATH)\n"
+	@printf "  Universal Path: $(UNIVERSAL_PATH)\n"
+	@printf "  Go Version: $(shell go version 2>/dev/null || echo 'Go not found')\n"
 
 # Check version compatibility
 check-versions:
@@ -177,7 +192,7 @@ help:
 build-plugins:
 	@printf "$(GREEN)Building plugins using universal builder...$(NC)\n"
 	@printf "$(BLUE)Environment: $(ENV_INFO)$(NC)\n"
-	@if [ "$(BUILD_MODE)" = "direct" ]; then \
+	@if [ "$(DETECT_ENV)" = "devcontainer" ]; then \
 		printf "$(YELLOW)Direct build in devcontainer...$(NC)\n"; \
 		mkdir -p $(OUTPUT_DIR) && \
 		for plugin_dir in src/*; do \
@@ -245,7 +260,7 @@ build-plugin-%:
 	@plugin_name=$*; \
 	printf "$(GREEN)Building plugin: $$plugin_name using universal builder$(NC)\n"; \
 	printf "$(BLUE)Environment: $(ENV_INFO)$(NC)\n"; \
-	if [ "$(BUILD_MODE)" = "direct" ]; then \
+	if [ "$(DETECT_ENV)" = "devcontainer" ]; then \
 		printf "$(YELLOW)Direct build in devcontainer...$(NC)\n"; \
 		(cd "src/$$plugin_name" && GOMODCACHE=$(GOMODCACHE) GOCACHE=$(GOCACHE) CGO_ENABLED=1 GOPRIVATE=github.com/metalmon/yapay-sdk GOOS=linux GOARCH=amd64 go build \
 			$(GO_MOD_FLAGS) \
@@ -603,35 +618,35 @@ update-dev-image:
 # Format code with imports management
 fmt:
 	@printf "$(GREEN)Formatting code...$(NC)\n"
-	@if ! command -v goimports >/dev/null 2>&1; then \
+	@if ! $(call run-go-tool,command -v goimports) >/dev/null 2>&1; then \
 		printf "$(YELLOW)Installing goimports...$(NC)\n"; \
-		GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) go install golang.org/x/tools/cmd/goimports@v0.20.0; \
+		GOSUMDB=off $(call run-go-cmd,go install golang.org/x/tools/cmd/goimports@v0.20.0); \
 	fi
 	@mkdir -p $(LOCAL_GOMODCACHE) $(LOCAL_GOCACHE)
-	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) go fmt $(GO_MOD_FLAGS) ./...
-	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) goimports -w .
+	@$(call run-go-cmd,go fmt $(GO_MOD_FLAGS) ./...)
+	@$(call run-go-tool,goimports -w .)
 	@printf "$(GREEN)Code formatting completed!$(NC)\n"
 
 # Lint code with auto-fix formatting
 lint: fmt
 	@printf "$(GREEN)Linting code...$(NC)\n"
-	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+	@if ! $(call run-go-tool,command -v golangci-lint) >/dev/null 2>&1; then \
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
-		GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
+		GOSUMDB=off CGO_ENABLED=0 $(call run-go-cmd,go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8); \
 	fi
 	@mkdir -p $(LOCAL_GOMODCACHE) $(LOCAL_GOCACHE)
-	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) golangci-lint run --timeout=5m
+	@GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) GOPRIVATE=github.com/metalmon/yapay-sdk $(call run-go-tool,golangci-lint run --timeout=5m --modules-download-mode=mod)
 	@printf "$(GREEN)Linting completed!$(NC)\n"
 
 # Lint with auto-fix (fixes what can be fixed automatically)
 lint-fix: fmt
 	@printf "$(GREEN)Linting code with auto-fix...$(NC)\n"
-	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+	@if ! $(call run-go-tool,command -v golangci-lint) >/dev/null 2>&1; then \
 		printf "$(YELLOW)Installing golangci-lint...$(NC)\n"; \
-		GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8; \
+		GOSUMDB=off CGO_ENABLED=0 $(call run-go-cmd,go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8); \
 	fi
 	@mkdir -p $(LOCAL_GOMODCACHE) $(LOCAL_GOCACHE)
-	GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) golangci-lint run --timeout=5m --fix
+	@GOMODCACHE=$(LOCAL_GOMODCACHE) GOCACHE=$(LOCAL_GOCACHE) GOPRIVATE=github.com/metalmon/yapay-sdk $(call run-go-tool,golangci-lint run --timeout=5m --fix --modules-download-mode=mod)
 	@printf "$(GREEN)Linting with auto-fix completed!$(NC)\n"
 
 # Security scan
