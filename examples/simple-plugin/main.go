@@ -315,3 +315,103 @@ func (g *PaymentGenerator) CustomizeYandexPayload(payload map[string]interface{}
 
 	return nil
 }
+
+// ProcessRequest processes a non-payment request (new in v1.1.0)
+func (g *PaymentGenerator) ProcessRequest(req *yapaysdk.RequestData) (*yapaysdk.RequestResult, error) {
+	g.logger.Infof("Processing request - type: %s, description: %s, client_id: %s",
+		req.Type, req.Description, req.ClientID)
+
+	// Example: Generate unique request ID
+	requestID := fmt.Sprintf("req_%d_%s", time.Now().Unix(), req.Type)
+
+	// Example: Process different types of requests
+	var message string
+	switch req.Type {
+	case "consultation":
+		message = "Ваша заявка на консультацию принята. Мы свяжемся с вами в ближайшее время."
+		// TODO: Add to CRM, send notification, etc.
+	case "callback":
+		message = "Запрос обратного звонка принят. Мы перезвоним вам в течение часа."
+		// TODO: Create callback task
+	default:
+		message = "Ваша заявка принята и будет обработана."
+		// TODO: Generic request handling
+	}
+
+	// Example: Extract data from metadata
+	if req.Metadata != nil {
+		if phone, exists := req.Metadata["phone"]; exists {
+			g.logger.Infof("Request from phone: %v", phone)
+		}
+		if email, exists := req.Metadata["email"]; exists {
+			g.logger.Infof("Request from email: %v", email)
+		}
+	}
+
+	// Return result
+	result := &yapaysdk.RequestResult{
+		ID:      requestID,
+		Status:  "pending",
+		Message: message,
+		Metadata: map[string]interface{}{
+			"processed_at": time.Now().UTC().Format(time.RFC3339),
+			"merchant":     g.merchant.Name,
+		},
+	}
+
+	g.logger.Infof("Request processed successfully - request_id: %s, status: %s", requestID, result.Status)
+	return result, nil
+}
+
+// ValidateRequestData validates request data (new in v1.1.0)
+func (g *PaymentGenerator) ValidateRequestData(req *yapaysdk.RequestData) error {
+	g.logger.Debugf("Validating request data - type: %s", req.Type)
+
+	// Validate request type
+	validTypes := map[string]bool{
+		"consultation": true,
+		"callback":     true,
+		"custom":       true,
+	}
+	if !validTypes[req.Type] {
+		return fmt.Errorf("invalid request type: %s", req.Type)
+	}
+
+	// Validate required fields
+	if req.Description == "" {
+		return fmt.Errorf("description is required")
+	}
+
+	// Example: Validate metadata
+	if req.Metadata != nil {
+		// For consultation requests, require phone or email
+		if req.Type == "consultation" {
+			phone, hasPhone := req.Metadata["phone"]
+			email, hasEmail := req.Metadata["email"]
+			if !hasPhone && !hasEmail {
+				return fmt.Errorf("phone or email is required for consultation requests")
+			}
+			if hasPhone && phone == "" {
+				return fmt.Errorf("phone cannot be empty")
+			}
+			if hasEmail && email == "" {
+				return fmt.Errorf("email cannot be empty")
+			}
+		}
+	}
+
+	g.logger.Debug("Request data validated successfully")
+	return nil
+}
+
+// GetRequestSettings returns request processing settings (new in v1.1.0)
+func (g *PaymentGenerator) GetRequestSettings() *yapaysdk.RequestSettings {
+	return &yapaysdk.RequestSettings{
+		SendEmail:       true,
+		EmailTemplate:   "consultation_request",
+		NotifyWebhook:   false,
+		WebhookURL:      "",
+		AutoResponse:    "Спасибо за обращение! Мы свяжемся с вами в ближайшее время.",
+		RequireApproval: false,
+	}
+}

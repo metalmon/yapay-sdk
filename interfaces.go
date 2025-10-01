@@ -105,10 +105,16 @@ type EmailConfig struct {
 
 // PaymentLinkGenerator defines the interface for payment link generation
 type PaymentLinkGenerator interface {
+	// Payment methods (existing)
 	GeneratePaymentData(req *PaymentRequest) (*PaymentGenerationResult, error)
 	ValidatePriceFromBackend(req *PaymentRequest) error
 	GetPaymentSettings() *PaymentSettings
 	CustomizeYandexPayload(payload map[string]interface{}) error
+
+	// Request methods (new - for non-payment requests like consultations, callbacks)
+	ProcessRequest(req *RequestData) (*RequestResult, error)
+	ValidateRequestData(req *RequestData) error
+	GetRequestSettings() *RequestSettings
 }
 
 // PaymentGenerationResult represents the result of payment data generation
@@ -128,6 +134,36 @@ type PaymentSettings struct {
 	SandboxMode        bool                   `json:"sandbox_mode"`
 	AutoConfirmTimeout int                    `json:"auto_confirm_timeout"`
 	CustomFields       map[string]interface{} `json:"custom_fields,omitempty"`
+}
+
+// RequestData represents a non-payment request (consultation, callback, etc.)
+type RequestData struct {
+	ID          string                 `json:"id"`
+	ClientID    string                 `json:"client_id"`
+	Type        string                 `json:"type"` // "consultation", "callback", "custom", etc.
+	Description string                 `json:"description"`
+	Metadata    map[string]interface{} `json:"metadata"`
+	Status      string                 `json:"status"` // "pending", "processed", "cancelled"
+	CreatedAt   string                 `json:"created_at,omitempty"`
+	UpdatedAt   string                 `json:"updated_at,omitempty"`
+}
+
+// RequestResult represents the result of request processing
+type RequestResult struct {
+	ID       string                 `json:"id"`
+	Status   string                 `json:"status"`
+	Message  string                 `json:"message"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// RequestSettings represents settings for request processing
+type RequestSettings struct {
+	SendEmail       bool   `json:"send_email"`
+	EmailTemplate   string `json:"email_template,omitempty"`
+	NotifyWebhook   bool   `json:"notify_webhook"`
+	WebhookURL      string `json:"webhook_url,omitempty"`
+	AutoResponse    string `json:"auto_response,omitempty"`
+	RequireApproval bool   `json:"require_approval"`
 }
 
 // PaymentEventHandler defines the interface for handling payment events

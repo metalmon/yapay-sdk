@@ -7,11 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-10-01
+
 ### Added
 
-- Initial release of Yapay Plugin SDK
-- Plugin development tools and examples
-- Comprehensive documentation
+- **Request API** - новый API для обработки заявок без создания платежей
+- **RequestData, RequestResult, RequestSettings** - новые типы для работы с заявками
+- **Extended PaymentLinkGenerator interface** - добавлены методы `ProcessRequest()`, `ValidateRequestData()`, `GetRequestSettings()`
+- **Support for consultation/callback requests** - поддержка сценариев "оплата после консультации"
+
+### Changed
+
+- **PaymentLinkGenerator interface** - расширен для поддержки заявок (breaking change)
+- **SDK version bumped to 1.1.0** - major version update
+
+### Breaking Changes
+
+- All plugins must implement new methods: `ProcessRequest()`, `ValidateRequestData()`, `GetRequestSettings()`
+- Existing plugins need to be updated to satisfy the extended interface
 
 ## [1.0.11] - 2025-09-23
 
