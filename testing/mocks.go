@@ -130,11 +130,22 @@ type MockPaymentGenerator struct {
 	GetSettingsCalls         int
 	CustomizePayloadCalls    []map[string]interface{}
 
+	// Request API calls (v1.1.0+)
+	ProcessRequestCalls      []*yapaysdk.RequestData
+	ValidateRequestDataCalls []*yapaysdk.RequestData
+	GetRequestSettingsCalls  int
+
 	GeneratePaymentDataResult *yapaysdk.PaymentGenerationResult
 	GeneratePaymentDataError  error
 	ValidatePriceError        error
 	PaymentSettings           *yapaysdk.PaymentSettings
 	CustomizePayloadError     error
+
+	// Request API results (v1.1.0+)
+	ProcessRequestResult     *yapaysdk.RequestResult
+	ProcessRequestError      error
+	ValidateRequestDataError error
+	RequestSettings          *yapaysdk.RequestSettings
 }
 
 // NewMockPaymentGenerator creates a new mock payment generator
@@ -143,11 +154,20 @@ func NewMockPaymentGenerator() *MockPaymentGenerator {
 		GeneratePaymentDataCalls: make([]*yapaysdk.PaymentRequest, 0),
 		ValidatePriceCalls:       make([]*yapaysdk.PaymentRequest, 0),
 		CustomizePayloadCalls:    make([]map[string]interface{}, 0),
+		ProcessRequestCalls:      make([]*yapaysdk.RequestData, 0),
+		ValidateRequestDataCalls: make([]*yapaysdk.RequestData, 0),
 		PaymentSettings: &yapaysdk.PaymentSettings{
 			Currency:           "RUB",
 			SandboxMode:        true,
 			AutoConfirmTimeout: 30,
 			CustomFields:       make(map[string]interface{}),
+		},
+		RequestSettings: &yapaysdk.RequestSettings{
+			SendEmail:       true,
+			EmailTemplate:   "test_request_notification",
+			NotifyWebhook:   false,
+			AutoResponse:    "Test auto response",
+			RequireApproval: false,
 		},
 	}
 }
@@ -199,16 +219,79 @@ func (m *MockPaymentGenerator) CustomizeYandexPayload(payload map[string]interfa
 	return m.CustomizePayloadError
 }
 
+// Request API implementation (v1.1.0+)
+
+// ProcessRequest processes a non-payment request
+func (m *MockPaymentGenerator) ProcessRequest(req *yapaysdk.RequestData) (*yapaysdk.RequestResult, error) {
+	m.ProcessRequestCalls = append(m.ProcessRequestCalls, req)
+	if m.ProcessRequestResult != nil {
+		return m.ProcessRequestResult, m.ProcessRequestError
+	}
+	// Default result
+	return &yapaysdk.RequestResult{
+		ID:      req.ID,
+		Status:  "pending",
+		Message: "Mock request processed",
+		Metadata: map[string]interface{}{
+			"mock": true,
+		},
+	}, m.ProcessRequestError
+}
+
+// ValidateRequestData validates request data
+func (m *MockPaymentGenerator) ValidateRequestData(req *yapaysdk.RequestData) error {
+	m.ValidateRequestDataCalls = append(m.ValidateRequestDataCalls, req)
+	return m.ValidateRequestDataError
+}
+
+// GetRequestSettings returns request processing settings
+func (m *MockPaymentGenerator) GetRequestSettings() *yapaysdk.RequestSettings {
+	m.GetRequestSettingsCalls++
+	if m.RequestSettings != nil {
+		return m.RequestSettings
+	}
+	// Default settings
+	return &yapaysdk.RequestSettings{
+		SendEmail:       true,
+		EmailTemplate:   "mock_request_notification",
+		NotifyWebhook:   false,
+		AutoResponse:    "Mock auto response",
+		RequireApproval: false,
+	}
+}
+
+// SetProcessRequestResult sets the result to return from ProcessRequest
+func (m *MockPaymentGenerator) SetProcessRequestResult(result *yapaysdk.RequestResult, err error) {
+	m.ProcessRequestResult = result
+	m.ProcessRequestError = err
+}
+
+// SetValidateRequestDataError sets the error to return from ValidateRequestData
+func (m *MockPaymentGenerator) SetValidateRequestDataError(err error) {
+	m.ValidateRequestDataError = err
+}
+
+// SetRequestSettings sets the request settings to return
+func (m *MockPaymentGenerator) SetRequestSettings(settings *yapaysdk.RequestSettings) {
+	m.RequestSettings = settings
+}
+
 // Reset clears all recorded calls
 func (m *MockPaymentGenerator) Reset() {
 	m.GeneratePaymentDataCalls = make([]*yapaysdk.PaymentRequest, 0)
 	m.ValidatePriceCalls = make([]*yapaysdk.PaymentRequest, 0)
 	m.GetSettingsCalls = 0
 	m.CustomizePayloadCalls = make([]map[string]interface{}, 0)
+	m.ProcessRequestCalls = make([]*yapaysdk.RequestData, 0)
+	m.ValidateRequestDataCalls = make([]*yapaysdk.RequestData, 0)
+	m.GetRequestSettingsCalls = 0
 	m.GeneratePaymentDataResult = nil
 	m.GeneratePaymentDataError = nil
 	m.ValidatePriceError = nil
 	m.CustomizePayloadError = nil
+	m.ProcessRequestResult = nil
+	m.ProcessRequestError = nil
+	m.ValidateRequestDataError = nil
 }
 
 // GetCallCounts returns the number of calls for each method
@@ -218,6 +301,9 @@ func (m *MockPaymentGenerator) GetCallCounts() map[string]int {
 		"ValidatePriceFromBackend": len(m.ValidatePriceCalls),
 		"GetPaymentSettings":       m.GetSettingsCalls,
 		"CustomizeYandexPayload":   len(m.CustomizePayloadCalls),
+		"ProcessRequest":           len(m.ProcessRequestCalls),
+		"ValidateRequestData":      len(m.ValidateRequestDataCalls),
+		"GetRequestSettings":       m.GetRequestSettingsCalls,
 	}
 }
 
@@ -321,5 +407,48 @@ func (t *TestData) CreateTestPaymentGenerationResult() *yapaysdk.PaymentGenerati
 		Metadata: map[string]interface{}{
 			"test": true,
 		},
+	}
+}
+
+// CreateTestRequestData creates a test request data (v1.1.0+)
+func (t *TestData) CreateTestRequestData() *yapaysdk.RequestData {
+	return &yapaysdk.RequestData{
+		ID:          "test-request-id",
+		ClientID:    "test-client",
+		Type:        "consultation",
+		Description: "Test consultation request",
+		Metadata: map[string]interface{}{
+			"phone":    "+79001234567",
+			"email":    "test@example.com",
+			"fullName": "Test User",
+		},
+		Status:    "pending",
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+}
+
+// CreateTestRequestResult creates a test request result (v1.1.0+)
+func (t *TestData) CreateTestRequestResult() *yapaysdk.RequestResult {
+	return &yapaysdk.RequestResult{
+		ID:      "test-request-id",
+		Status:  "pending",
+		Message: "Test request processed successfully",
+		Metadata: map[string]interface{}{
+			"client_id": "test-client",
+			"test":      true,
+		},
+	}
+}
+
+// CreateTestRequestSettings creates a test request settings (v1.1.0+)
+func (t *TestData) CreateTestRequestSettings() *yapaysdk.RequestSettings {
+	return &yapaysdk.RequestSettings{
+		SendEmail:       true,
+		EmailTemplate:   "test_request_notification",
+		NotifyWebhook:   false,
+		WebhookURL:      "",
+		AutoResponse:    "Thank you for your request",
+		RequireApproval: false,
 	}
 }

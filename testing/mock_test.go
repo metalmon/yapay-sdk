@@ -70,7 +70,7 @@ func TestMockPaymentGeneratorMethods(t *testing.T) {
 	mock.SetValidatePriceError(nil)
 	mock.SetCustomizePayloadError(nil)
 
-	// Test all methods
+	// Test all payment methods
 	genResult, err := mock.GeneratePaymentData(request)
 	assert.NoError(t, err)
 	assert.Equal(t, result, genResult)
@@ -85,10 +85,30 @@ func TestMockPaymentGeneratorMethods(t *testing.T) {
 	payload := map[string]interface{}{"test": "value"}
 	assert.NoError(t, mock.CustomizeYandexPayload(payload))
 
+	// Test Request API methods (v1.1.0+)
+	requestData := testData.CreateTestRequestData()
+	requestResult := testData.CreateTestRequestResult()
+
+	mock.SetProcessRequestResult(requestResult, nil)
+	mock.SetValidateRequestDataError(nil)
+
+	procResult, err := mock.ProcessRequest(requestData)
+	assert.NoError(t, err)
+	assert.Equal(t, requestResult.ID, procResult.ID)
+
+	assert.NoError(t, mock.ValidateRequestData(requestData))
+
+	reqSettings := mock.GetRequestSettings()
+	assert.NotNil(t, reqSettings)
+	assert.True(t, reqSettings.SendEmail)
+
 	// Test call counts
 	counts := mock.GetCallCounts()
 	assert.Equal(t, 1, counts["GeneratePaymentData"])
 	assert.Equal(t, 1, counts["ValidatePriceFromBackend"])
 	assert.Equal(t, 1, counts["GetPaymentSettings"])
 	assert.Equal(t, 1, counts["CustomizeYandexPayload"])
+	assert.Equal(t, 1, counts["ProcessRequest"])
+	assert.Equal(t, 1, counts["ValidateRequestData"])
+	assert.Equal(t, 1, counts["GetRequestSettings"])
 }
