@@ -84,6 +84,7 @@ type NotificationMessages struct {
 	PaymentCreatedTitle string `json:"payment_created_title,omitempty" yaml:"payment_created_title,omitempty"`
 	PaymentSuccessTitle string `json:"payment_success_title,omitempty" yaml:"payment_success_title,omitempty"`
 	PaymentFailedTitle  string `json:"payment_failed_title,omitempty" yaml:"payment_failed_title,omitempty"`
+	PaymentDetailsTitle string `json:"payment_details_title,omitempty" yaml:"payment_details_title,omitempty"`
 
 	// Request notifications
 	RequestTitle        string            `json:"request_title,omitempty" yaml:"request_title,omitempty"`
