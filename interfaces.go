@@ -73,8 +73,22 @@ type YandexConfig struct {
 
 // NotificationConfig represents notification configuration
 type NotificationConfig struct {
-	Telegram TelegramConfig `json:"telegram" yaml:"telegram"`
-	Email    EmailConfig    `json:"email" yaml:"email"`
+	Telegram TelegramConfig       `json:"telegram" yaml:"telegram"`
+	Email    EmailConfig          `json:"email" yaml:"email"`
+	Messages NotificationMessages `json:"messages,omitempty" yaml:"messages,omitempty"`
+}
+
+// NotificationMessages represents customizable notification message templates
+type NotificationMessages struct {
+	// Payment notifications
+	PaymentCreatedTitle string `json:"payment_created_title,omitempty" yaml:"payment_created_title,omitempty"`
+	PaymentSuccessTitle string `json:"payment_success_title,omitempty" yaml:"payment_success_title,omitempty"`
+	PaymentFailedTitle  string `json:"payment_failed_title,omitempty" yaml:"payment_failed_title,omitempty"`
+
+	// Request notifications
+	RequestTitle        string            `json:"request_title,omitempty" yaml:"request_title,omitempty"`
+	RequestDetailsTitle string            `json:"request_details_title,omitempty" yaml:"request_details_title,omitempty"`
+	RequestTypeLabels   map[string]string `json:"request_type_labels,omitempty" yaml:"request_type_labels,omitempty"`
 }
 
 // FieldLabels represents field labels for order metadata in notifications
