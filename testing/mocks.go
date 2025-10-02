@@ -63,6 +63,11 @@ func (m *MockClientHandler) OnPaymentCanceled(payment *yapaysdk.Payment) error {
 	return nil
 }
 
+func (m *MockClientHandler) OnPaymentPending(payment *yapaysdk.Payment) error {
+	// Mock implementation - just record the call
+	return nil
+}
+
 // ValidateRequest records the call and returns the configured error (helper method for testing)
 func (m *MockClientHandler) ValidateRequest(req *yapaysdk.PaymentRequest) error {
 	m.ValidateRequestCalls = append(m.ValidateRequestCalls, req)
@@ -163,11 +168,12 @@ func NewMockPaymentGenerator() *MockPaymentGenerator {
 			CustomFields:       make(map[string]interface{}),
 		},
 		RequestSettings: &yapaysdk.RequestSettings{
-			SendEmail:       true,
-			EmailTemplate:   "test_request_notification",
-			NotifyWebhook:   false,
-			AutoResponse:    "Test auto response",
-			RequireApproval: false,
+			Enabled: true,
+			Types:   []string{"consultation", "callback"},
+			Fields: map[string]interface{}{
+				"email_template": "test_request_notification",
+				"auto_response":  "Test auto response",
+			},
 		},
 	}
 }
@@ -229,9 +235,12 @@ func (m *MockPaymentGenerator) ProcessRequest(req *yapaysdk.RequestData) (*yapay
 	}
 	// Default result
 	return &yapaysdk.RequestResult{
-		ID:      req.ID,
-		Status:  "pending",
+		Success: true,
 		Message: "Mock request processed",
+		Data: map[string]interface{}{
+			"request_id": req.ID,
+			"status":     "pending",
+		},
 		Metadata: map[string]interface{}{
 			"mock": true,
 		},
@@ -252,11 +261,12 @@ func (m *MockPaymentGenerator) GetRequestSettings() *yapaysdk.RequestSettings {
 	}
 	// Default settings
 	return &yapaysdk.RequestSettings{
-		SendEmail:       true,
-		EmailTemplate:   "mock_request_notification",
-		NotifyWebhook:   false,
-		AutoResponse:    "Mock auto response",
-		RequireApproval: false,
+		Enabled: true,
+		Types:   []string{"consultation", "callback"},
+		Fields: map[string]interface{}{
+			"email_template": "mock_request_notification",
+			"auto_response":  "Mock auto response",
+		},
 	}
 }
 
@@ -344,7 +354,7 @@ func (t *TestData) CreateTestMerchant() *yapaysdk.Merchant {
 		Notifications: yapaysdk.NotificationConfig{
 			Telegram: yapaysdk.TelegramConfig{
 				Enabled:  true,
-				ChatID:   "test-chat-id",
+				ChatIDs:  []string{"test-chat-id"},
 				BotToken: "test-bot-token",
 			},
 			Email: yapaysdk.EmailConfig{
@@ -431,9 +441,12 @@ func (t *TestData) CreateTestRequestData() *yapaysdk.RequestData {
 // CreateTestRequestResult creates a test request result (v1.1.0+)
 func (t *TestData) CreateTestRequestResult() *yapaysdk.RequestResult {
 	return &yapaysdk.RequestResult{
-		ID:      "test-request-id",
-		Status:  "pending",
+		Success: true,
 		Message: "Test request processed successfully",
+		Data: map[string]interface{}{
+			"request_id": "test-request-id",
+			"status":     "pending",
+		},
 		Metadata: map[string]interface{}{
 			"client_id": "test-client",
 			"test":      true,
@@ -444,11 +457,11 @@ func (t *TestData) CreateTestRequestResult() *yapaysdk.RequestResult {
 // CreateTestRequestSettings creates a test request settings (v1.1.0+)
 func (t *TestData) CreateTestRequestSettings() *yapaysdk.RequestSettings {
 	return &yapaysdk.RequestSettings{
-		SendEmail:       true,
-		EmailTemplate:   "test_request_notification",
-		NotifyWebhook:   false,
-		WebhookURL:      "",
-		AutoResponse:    "Thank you for your request",
-		RequireApproval: false,
+		Enabled: true,
+		Types:   []string{"consultation", "callback"},
+		Fields: map[string]interface{}{
+			"email_template": "test_request_notification",
+			"auto_response":  "Thank you for your request",
+		},
 	}
 }

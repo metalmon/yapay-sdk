@@ -94,13 +94,13 @@ func TestMockPaymentGeneratorMethods(t *testing.T) {
 
 	procResult, err := mock.ProcessRequest(requestData)
 	assert.NoError(t, err)
-	assert.Equal(t, requestResult.ID, procResult.ID)
+	assert.Equal(t, requestResult.Data["request_id"], procResult.Data["request_id"])
 
 	assert.NoError(t, mock.ValidateRequestData(requestData))
 
 	reqSettings := mock.GetRequestSettings()
 	assert.NotNil(t, reqSettings)
-	assert.True(t, reqSettings.SendEmail)
+	assert.True(t, reqSettings.Enabled)
 
 	// Test call counts
 	counts := mock.GetCallCounts()
