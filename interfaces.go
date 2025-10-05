@@ -4,17 +4,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// PaymentRequest represents a payment request
+// PaymentRequest represents a payment request (LTS version)
 type PaymentRequest struct {
+	// Current fields (remain as is)
 	Amount      int                    `json:"amount"`
 	Currency    string                 `json:"currency"`
 	Description string                 `json:"description"`
 	ReturnURL   string                 `json:"return_url"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+
+	// New LTS fields (not processed yet - future enhancement)
+	Customer     *CustomerInfo       `json:"customer,omitempty"`
+	Cart         []*CartItem         `json:"cart,omitempty"`
+	Delivery     *DeliveryInfo       `json:"delivery,omitempty"`
+	PaymentPrefs *PaymentPreferences `json:"payment_preferences,omitempty"`
 }
 
-// Payment represents a payment
+// Payment represents a payment (LTS version)
 type Payment struct {
+	// Current fields (remain as is)
 	ID          string                 `json:"id"`
 	OrderID     string                 `json:"order_id"`
 	MerchantID  string                 `json:"merchant_id"` // Merchant ID from Yandex Pay (also serves as client ID)
@@ -31,6 +39,13 @@ type Payment struct {
 
 	// Integration data prepared by plugin
 	IntegrationData []IntegrationData `json:"integration_data,omitempty"`
+
+	// New LTS fields (not processed yet - future enhancement)
+	Cart         *RenderedCart         `json:"cart,omitempty"`
+	Extensions   *OrderExtensions      `json:"extensions,omitempty"`
+	RedirectUrls *MerchantRedirectUrls `json:"redirectUrls,omitempty"`
+	Risk         *MerchantRiskInfo     `json:"risk,omitempty"`
+	Customer     *CustomerInfo         `json:"customer,omitempty"`
 }
 
 // Merchant represents a merchant configuration
@@ -316,4 +331,212 @@ type RequestDataGenerator interface {
 	ProcessRequest(req *RequestData) (*RequestResult, error)
 	ValidateRequestData(req *RequestData) error
 	GetRequestSettings() *RequestSettings
+}
+
+// ============================================================================
+// LTS (Long Term Support) structures for complete Yandex Pay API support
+// These structures provide full compatibility with Yandex Pay Merchant API
+// ============================================================================
+
+// CustomerInfo represents customer information
+type CustomerInfo struct {
+	Email string `json:"email,omitempty"`
+	Phone string `json:"phone,omitempty"`
+	Name  string `json:"name,omitempty"`
+}
+
+// CartItem represents a simple cart item
+type CartItem struct {
+	ProductID   string `json:"product_id"`
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	Quantity    int    `json:"quantity"`
+	UnitPrice   int    `json:"unit_price"` // In kopecks
+}
+
+// DeliveryInfo represents delivery information
+type DeliveryInfo struct {
+	Method  string `json:"method,omitempty"`  // "pickup", "delivery"
+	Address string `json:"address,omitempty"` // Delivery address
+	Price   int    `json:"price,omitempty"`   // Delivery price in kopecks
+}
+
+// PaymentPreferences represents payment preferences
+type PaymentPreferences struct {
+	PreferredPaymentMethod string   `json:"preferred_payment_method,omitempty"` // "FULLPAYMENT", "SPLIT"
+	AvailableMethods       []string `json:"available_methods,omitempty"`        // ["SPLIT", "CARD"]
+	IsPrepayment           bool     `json:"is_prepayment,omitempty"`            // Prepayment flag
+}
+
+// RenderedCart represents the complete cart structure from Yandex Pay API
+type RenderedCart struct {
+	ExternalID string              `json:"externalId,omitempty"`
+	Items      []*RenderedCartItem `json:"items"`
+	Total      *CartTotal          `json:"total"`
+}
+
+// RenderedCartItem represents a complete cart item with all features
+type RenderedCartItem struct {
+	Description         string            `json:"description"`
+	DiscountedUnitPrice string            `json:"discountedUnitPrice"`
+	Features            *CartItemFeatures `json:"features,omitempty"`
+	PointsAmount        string            `json:"pointsAmount,omitempty"`
+	ProductID           string            `json:"productId"`
+	Quantity            *ItemQuantity     `json:"quantity"`
+	Receipt             *ItemReceipt      `json:"receipt,omitempty"`
+	SKUID               string            `json:"skuId,omitempty"`
+	Subtotal            string            `json:"subtotal"`
+	Title               string            `json:"title"`
+	Total               string            `json:"total"`
+	UnitPrice           string            `json:"unitPrice"`
+}
+
+// CartTotal represents cart totals
+type CartTotal struct {
+	Amount       string `json:"amount"`
+	PointsAmount string `json:"pointsAmount,omitempty"`
+}
+
+// CartItemFeatures represents cart item features
+type CartItemFeatures struct {
+	PointsDisabled bool   `json:"pointsDisabled,omitempty"`
+	TariffModifier string `json:"tariffModifier,omitempty"` // "VERY_LOW", "LOW", "MEDIUM", "HIGH", "VERY_HIGH"
+}
+
+// ItemQuantity represents item quantity information
+type ItemQuantity struct {
+	Count     string `json:"count"`
+	Available string `json:"available,omitempty"`
+}
+
+// ItemReceipt represents fiscal receipt information
+type ItemReceipt struct {
+	Tax                int           `json:"tax"`
+	Agent              *Agent        `json:"agent,omitempty"`
+	Excise             string        `json:"excise,omitempty"`
+	MarkQuantity       *MarkQuantity `json:"markQuantity,omitempty"`
+	Measure            int           `json:"measure,omitempty"`
+	PaymentMethodType  int           `json:"paymentMethodType,omitempty"`
+	PaymentSubjectType int           `json:"paymentSubjectType,omitempty"`
+	ProductCode        string        `json:"productCode,omitempty"`
+	Supplier           *Supplier     `json:"supplier,omitempty"`
+	Title              string        `json:"title"`
+}
+
+// Agent represents agent information
+type Agent struct {
+	AgentType        int               `json:"agentType"`
+	Operation        string            `json:"operation,omitempty"`
+	PaymentsOperator *PaymentsOperator `json:"paymentsOperator,omitempty"`
+	Phones           []string          `json:"phones,omitempty"`
+	TransferOperator *TransferOperator `json:"transferOperator,omitempty"`
+}
+
+// MarkQuantity represents mark quantity information
+type MarkQuantity struct {
+	Denominator int `json:"denominator"`
+	Numerator   int `json:"numerator"`
+}
+
+// Supplier represents supplier information
+type Supplier struct {
+	INN    string   `json:"inn,omitempty"`
+	Name   string   `json:"name,omitempty"`
+	Phones []string `json:"phones,omitempty"`
+}
+
+// PaymentsOperator represents payments operator information
+type PaymentsOperator struct {
+	Phones []string `json:"phones,omitempty"`
+}
+
+// TransferOperator represents transfer operator information
+type TransferOperator struct {
+	Address string   `json:"address,omitempty"`
+	INN     string   `json:"inn,omitempty"`
+	Name    string   `json:"name,omitempty"`
+	Phones  []string `json:"phones,omitempty"`
+}
+
+// OrderExtensions represents order extensions
+type OrderExtensions struct {
+	BillingReport *BillingReport `json:"billingReport,omitempty"`
+	PaymentData   *PaymentData   `json:"paymentData,omitempty"`
+	QRData        *QRData        `json:"qrData,omitempty"`
+	SMSOffer      *SMSOffer      `json:"smsOffer,omitempty"`
+}
+
+// BillingReport represents billing report information
+type BillingReport struct {
+	BranchID  *string `json:"branchId,omitempty"`
+	ManagerID *string `json:"managerId,omitempty"`
+}
+
+// PaymentData represents payment data
+type PaymentData struct {
+	SaleToken string `json:"saleToken,omitempty"`
+}
+
+// QRData represents QR code data
+type QRData struct {
+	Token string `json:"token,omitempty"`
+}
+
+// SMSOffer represents SMS offer information
+type SMSOffer struct {
+	Phone string `json:"phone,omitempty"`
+}
+
+// MerchantRedirectUrls represents merchant redirect URLs
+type MerchantRedirectUrls struct {
+	OnAbort   string `json:"onAbort,omitempty"`
+	OnError   string `json:"onError,omitempty"`
+	OnSuccess string `json:"onSuccess,omitempty"`
+}
+
+// MerchantRiskInfo represents merchant risk information
+type MerchantRiskInfo struct {
+	BillingPhone                   string                 `json:"billingPhone,omitempty"`
+	CustomerAggregates             *CustomerAggregates    `json:"customerAggregates,omitempty"`
+	DeviceID                       string                 `json:"deviceId,omitempty"`
+	IsExpressShipping              bool                   `json:"isExpressShipping,omitempty"`
+	MerchantMCC                    string                 `json:"merchantMcc,omitempty"`
+	MerchantName                   string                 `json:"merchantName,omitempty"`
+	MerchantOfflinePosLegalAddress string                 `json:"merchantOfflinePosLegalAddress,omitempty"`
+	MerchantTaxRefNumber           string                 `json:"merchantTaxRefNumber,omitempty"`
+	PeriodCheckAggregates          *PeriodCheckAggregates `json:"periodCheckAggregates,omitempty"`
+	QRType                         string                 `json:"qrType,omitempty"`
+	QRCID                          string                 `json:"qrcId,omitempty"`
+}
+
+// CustomerAggregates represents customer aggregates for risk analysis
+type CustomerAggregates struct {
+	AmountFirstSuccessfulOrder            string `json:"amountFirstSuccessfulOrder,omitempty"`
+	AmountLatestSuccessfulOrder           string `json:"amountLatestSuccessfulOrder,omitempty"`
+	Cookie                                string `json:"cookie,omitempty"`
+	DaysSinceLastPasswordReset            int    `json:"daysSinceLastPasswordReset,omitempty"`
+	FailedLoginAttemptsOneDay             int    `json:"failedLoginAttemptsOneDay,omitempty"`
+	FailedLoginAttemptsSevenDays          int    `json:"failedLoginAttemptsSevenDays,omitempty"`
+	FirstSuccessfulOrderDate              string `json:"firstSuccessfulOrderDate,omitempty"`
+	HistoricalCookieLogin                 bool   `json:"historicalCookieLogin,omitempty"`
+	HistoricalDeviceLogin                 bool   `json:"historicalDeviceLogin,omitempty"`
+	LastPasswordResetDate                 string `json:"lastPasswordResetDate,omitempty"`
+	LatestSuccessfulOrderLastYearDate     string `json:"latestSuccessfulOrderLastYearDate,omitempty"`
+	PreviousSuccessfulOrdersAtSameAddress bool   `json:"previousSuccessfulOrdersAtSameAddress,omitempty"`
+	RedemptionRateLastHalfYear            string `json:"redemptionRateLastHalfYear,omitempty"`
+	RegistrationDate                      string `json:"registrationDate,omitempty"`
+}
+
+// PeriodCheckAggregates represents period check aggregates for risk analysis
+type PeriodCheckAggregates struct {
+	SuccessfulOrdersCountNineMonths         int    `json:"successfulOrdersCountNineMonths,omitempty"`
+	SuccessfulOrdersCountOneMonth           int    `json:"successfulOrdersCountOneMonth,omitempty"`
+	SuccessfulOrdersCountSixMonths          int    `json:"successfulOrdersCountSixMonths,omitempty"`
+	SuccessfulOrdersCountThreeMonths        int    `json:"successfulOrdersCountThreeMonths,omitempty"`
+	SuccessfulOrdersCountTwelveMonths       int    `json:"successfulOrdersCountTwelveMonths,omitempty"`
+	TotalAmountSuccessfulOrdersNineMonths   string `json:"totalAmountSuccessfulOrdersNineMonths,omitempty"`
+	TotalAmountSuccessfulOrdersOneMonth     string `json:"totalAmountSuccessfulOrdersOneMonth,omitempty"`
+	TotalAmountSuccessfulOrdersSixMonths    string `json:"totalAmountSuccessfulOrdersSixMonths,omitempty"`
+	TotalAmountSuccessfulOrdersThreeMonths  string `json:"totalAmountSuccessfulOrdersThreeMonths,omitempty"`
+	TotalAmountSuccessfulOrdersTwelveMonths string `json:"totalAmountSuccessfulOrdersTwelveMonths,omitempty"`
 }

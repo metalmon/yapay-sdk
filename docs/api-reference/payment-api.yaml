@@ -210,8 +210,8 @@ components:
         status:
           type: string
           description: Статус платежа
-          enum: ["pending", "succeeded", "canceled", "failed"]
-          example: "pending"
+          enum: ["PENDING", "SUCCEEDED", "CAPTURED", "AUTHORIZED", "CANCELED", "FAILED", "VOIDED", "REFUNDED", "PARTIALLY_REFUNDED"]
+          example: "PENDING"
         amount:
           type: integer
           description: Сумма платежа в копейках
@@ -236,8 +236,8 @@ components:
         status:
           type: string
           description: Текущий статус платежа
-          enum: ["pending", "succeeded", "canceled", "failed"]
-          example: "succeeded"
+          enum: ["PENDING", "SUCCEEDED", "CAPTURED", "AUTHORIZED", "CANCELED", "FAILED", "VOIDED", "REFUNDED", "PARTIALLY_REFUNDED"]
+          example: "SUCCEEDED"
         amount:
           type: integer
           description: Сумма платежа в копейках
