@@ -18,6 +18,9 @@ type PaymentRequest struct {
 	Cart         []*CartItem         `json:"cart,omitempty"`
 	Delivery     *DeliveryInfo       `json:"delivery,omitempty"`
 	PaymentPrefs *PaymentPreferences `json:"payment_preferences,omitempty"`
+
+	// Additional Yandex Pay API fields
+	BillingPhone string `json:"billing_phone,omitempty"`
 }
 
 // Payment represents a payment (LTS version)
@@ -161,6 +164,15 @@ type PaymentGenerationResult struct {
 	Description string                 `json:"description"`
 	ReturnURL   string                 `json:"return_url"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+
+	// LTS fields (matching PaymentRequest)
+	Customer     *CustomerInfo       `json:"customer,omitempty"`
+	Cart         []*CartItem         `json:"cart,omitempty"`
+	Delivery     *DeliveryInfo       `json:"delivery,omitempty"`
+	PaymentPrefs *PaymentPreferences `json:"payment_preferences,omitempty"`
+
+	// Additional Yandex Pay API fields
+	BillingPhone string `json:"billing_phone,omitempty"`
 }
 
 // PaymentSettings represents payment settings for Yandex Pay
