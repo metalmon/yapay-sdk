@@ -82,6 +82,7 @@ type CORSConfig struct {
 type YandexConfig struct {
 	MerchantID     string `json:"merchant_id" yaml:"merchant_id"`
 	SecretKey      string `json:"secret_key" yaml:"secret_key"`
+	APIKey         string `json:"api_key,omitempty" yaml:"api_key,omitempty"`
 	SandboxMode    bool   `json:"sandbox_mode" yaml:"sandbox_mode"`
 	Currency       string `json:"currency" yaml:"currency"`
 	APIBaseURL     string `json:"api_base_url,omitempty" yaml:"api_base_url,omitempty"`
