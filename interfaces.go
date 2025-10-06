@@ -7,6 +7,7 @@ import (
 // PaymentRequest represents a payment request (LTS version)
 type PaymentRequest struct {
 	// Current fields (remain as is)
+	OrderID     string                 `json:"order_id,omitempty"`
 	Amount      int                    `json:"amount"`
 	Currency    string                 `json:"currency"`
 	Description string                 `json:"description"`
