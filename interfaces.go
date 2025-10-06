@@ -195,6 +195,9 @@ type RequestData struct {
 	CreatedAt   string                 `json:"created_at,omitempty"`
 	UpdatedAt   string                 `json:"updated_at,omitempty"`
 
+	// Customer data for notifications (similar to Payment)
+	Customer *CustomerInfo `json:"customer,omitempty"`
+
 	// Integration data prepared by plugin
 	IntegrationData []IntegrationData `json:"integration_data,omitempty"`
 }
